@@ -7,7 +7,7 @@ struct MyObj {
     name: String,
     brand: String,
     price: String,
-    picture: String,
+    pictures: Vec<String>,
 }
 
 #[get("/bikes")]
@@ -18,21 +18,30 @@ async fn bikes() -> Result<impl Responder> {
             name: "My Name 1".to_string(),
             brand: "Foo Brand".to_string(),
             price: "999".to_string(),
-            picture: "https://picsum.photos/id/0/200/300".to_string(),
+            pictures: vec![
+                "https://picsum.photos/id/0/200/300".to_string(),
+                "https://picsum.photos/id/1/200/300".to_string(),
+            ],
         },
         MyObj {
             id: "2".to_string(),
             name: "My Name 2".to_string(),
             brand: "Bar Brand".to_string(),
             price: "2000".to_string(),
-            picture: "https://picsum.photos/id/1/200/300".to_string(),
+            pictures: vec![
+                "https://picsum.photos/id/2/200/300".to_string(),
+                "https://picsum.photos/id/3/200/300".to_string(),
+            ],
         },
         MyObj {
             id: "3".to_string(),
             name: "My Name 3".to_string(),
             brand: "Bar Brand".to_string(),
             price: "580".to_string(),
-            picture: "https://picsum.photos/id/2/200/300".to_string(),
+            pictures: vec![
+                "https://picsum.photos/id/4/200/300".to_string(),
+                "https://picsum.photos/id/5/200/300".to_string(),
+            ],
         },
     ]))
 }
