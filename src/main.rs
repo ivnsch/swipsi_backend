@@ -1,6 +1,7 @@
 use actix_web::{get, web, App, HttpServer, Responder, Result};
 use chrono::Utc;
 use serde::Serialize;
+use sqlx::postgres::PgPoolOptions;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -80,8 +81,39 @@ async fn bikes() -> Result<impl Responder> {
     ]))
 }
 
-#[actix_web::main] // or #[tokio::main]
+// #[actix_web::main] // or #[tokio::main]
+// async fn main() -> std::io::Result<()> {
+//     HttpServer::new(|| App::new().service(bikes))
+//         // .bind(("127.0.0.1", 8080))?
+//         .bind(("0.0.0.0", 8080))?
+//         .run()
+//         .await
+// }
+
+#[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    println!("Attempting to connect...");
+
+    let pool = PgPoolOptions::new()
+        .max_connections(5)
+        .connect("postgres://ivanschuetz:password@localhost/bikematch")
+        .await
+        .expect("error1");
+    println!("Connected successfully!");
+
+    // Make a simple query to return the given parameter (use a question mark `?` instead of `$1` for MySQL/MariaDB)
+    let row: (i64,) = sqlx::query_as("SELECT $1")
+        .bind(150_i64)
+        .fetch_one(&pool)
+        .await
+        .expect("error2");
+
+    println!("row: {row:?}");
+
+    assert_eq!(row.0, 150);
+
+    pool.acquire().await.expect("error acquiring connection");
+
     HttpServer::new(|| App::new().service(bikes))
         // .bind(("127.0.0.1", 8080))?
         .bind(("0.0.0.0", 8080))?
