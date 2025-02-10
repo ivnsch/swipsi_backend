@@ -33,7 +33,7 @@ async fn bikes() -> Result<impl Responder> {
             id: "1".to_string(),
             name: "My Name 1".to_string(),
             brand: "Foo Brand".to_string(),
-            price: "999".to_string(),
+            price: "999 €".to_string(),
             price_number: 999.,
             pictures: vec![
                 "https://picsum.photos/id/0/500/700".to_string(),
@@ -49,7 +49,7 @@ async fn bikes() -> Result<impl Responder> {
             id: "2".to_string(),
             name: "My Name 2".to_string(),
             brand: "Bar Brand".to_string(),
-            price: "2000".to_string(),
+            price: "2000 €".to_string(),
             price_number: 2000.,
             pictures: vec![
                 "https://picsum.photos/id/2/500/700".to_string(),
@@ -65,7 +65,7 @@ async fn bikes() -> Result<impl Responder> {
             id: "3".to_string(),
             name: "My Name 3".to_string(),
             brand: "Bar Brand".to_string(),
-            price: "580".to_string(),
+            price: "580 €".to_string(),
             price_number: 580.,
             pictures: vec![
                 "https://picsum.photos/id/4/500/700".to_string(),
