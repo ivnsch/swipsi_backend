@@ -1,4 +1,5 @@
 use actix_web::{get, web, App, HttpServer, Responder, Result};
+use chrono::Utc;
 use serde::Serialize;
 
 #[derive(Serialize)]
@@ -15,6 +16,7 @@ struct MyObj {
     #[serde(rename = "type")]
     type_: BikeType,
     descr: String,
+    added_timestamp: u64,
 }
 
 #[derive(Serialize)]
@@ -40,7 +42,8 @@ async fn bikes() -> Result<impl Responder> {
             vendor_link: "https://google.com".to_string(),
             electric: false,
             type_: BikeType::Mountain,
-            descr: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum".to_string()
+            descr: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum".to_string(),
+            added_timestamp: Utc::now().timestamp_micros() as u64
         },
         MyObj {
             id: "2".to_string(),
@@ -55,7 +58,8 @@ async fn bikes() -> Result<impl Responder> {
             vendor_link: "https://google.com".to_string(),
             electric: false,
             type_: BikeType::Hybrid,
-            descr: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum".to_string()
+            descr: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum".to_string(),
+            added_timestamp: Utc::now().timestamp_micros() as u64
         },
         MyObj {
             id: "3".to_string(),
@@ -70,7 +74,8 @@ async fn bikes() -> Result<impl Responder> {
             vendor_link: "https://google.com".to_string(),
             electric: true,
             type_: BikeType::Road,
-            descr: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum".to_string()
+            descr: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum".to_string(),
+            added_timestamp: Utc::now().timestamp_micros() as u64
         },
     ]))
 }
