@@ -65,10 +65,7 @@ pub struct AppState {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    println!("Attempting to connect...");
-
     let pool = init_pool().await;
-    println!("Connected successfully!");
 
     // consider removing this..
     test_query(&pool).await;
