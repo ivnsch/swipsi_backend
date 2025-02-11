@@ -19,7 +19,7 @@ INSERT into bike_pic(bike_id, url)
 VALUES (2, 'https://picsum.photos/id/2/500/700');
 INSERT into bike_pic(bike_id, url)
 VALUES (2, 'https://picsum.photos/id/3/500/700');
--- INSERT into bike_pic(bike_id, url)
--- VALUES (3, 'https://picsum.photos/id/4/500/700');
--- INSERT into bike_pic(bike_id, url)
--- VALUES (3, 'https://picsum.photos/id/5/500/700');
+INSERT into bike_pic(bike_id, url)
+VALUES (3, 'https://picsum.photos/id/4/500/700');
+INSERT into bike_pic(bike_id, url)
+VALUES (3, 'https://picsum.photos/id/5/500/700');
