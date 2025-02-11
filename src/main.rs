@@ -94,23 +94,23 @@ async fn load_bikes(pool: &Pool<Postgres>) -> Vec<MyObj2> {
     let res: Vec<MyObj2> = sqlx::query_as(
         r#"
 SELECT
-    f.id,
-    f.name_,
-    f.brand,
-    f.price,
-    f.price_number,
-    f.vendor_link,
-    f.electric,
-    f.type_,
-    f.descr,
-    f.added_timestamp,
-    COALESCE(array_agg(fp.url) FILTER (WHERE fp.url IS NOT NULL), ARRAY[]::TEXT[]) AS pictures
+    b.id,
+    b.name_,
+    b.brand,
+    b.price,
+    b.price_number,
+    b.vendor_link,
+    b.electric,
+    b.type_,
+    b.descr,
+    b.added_timestamp,
+    COALESCE(array_agg(bp.url) FILTER (WHERE bp.url IS NOT NULL), ARRAY[]::TEXT[]) AS pictures
 FROM
-    bike f
+    bike b
 LEFT JOIN
-    bike_pic fp ON f.id = fp.bike_id
+    bike_pic bp ON b.id = bp.bike_id
 GROUP BY
-    f.id, f.name_, f.brand, f.price, f.price_number, f.vendor_link, f.electric, f.type_, f.descr, f.added_timestamp;
+    b.id, b.name_, b.brand, b.price, b.price_number, b.vendor_link, b.electric, b.type_, b.descr, b.added_timestamp;
 "#,
     )
     .fetch_all(pool)
