@@ -109,9 +109,7 @@ mod test {
     #[tokio::test]
     async fn test() {
         let pool = init_pool().await;
-
         let bikes = load_bikes(&pool).await;
-
-        println!("bikes: {:?}", bikes);
-    }
+        println!("bikes: {:?}", bikes); 
+    } 
 }
