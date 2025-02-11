@@ -8,7 +8,7 @@ use sqlx::{postgres::PgPoolOptions, prelude::FromRow, Pool, Postgres};
 
 #[derive(Debug, FromRow, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct MyObj {
+struct Bike {
     id: String,
     #[serde(rename = "name")]
     name_: String,
@@ -29,8 +29,8 @@ async fn bikes(state: Data<AppState>) -> Result<impl Responder> {
     Ok(web::Json(load_bikes(&state.db).await))
 }
 
-async fn load_bikes(pool: &Pool<Postgres>) -> Vec<MyObj> {
-    let res: Vec<MyObj> = sqlx::query_as(
+async fn load_bikes(pool: &Pool<Postgres>) -> Vec<Bike> {
+    let res: Vec<Bike> = sqlx::query_as(
         r#"
 SELECT
     b.id::TEXT AS id,
