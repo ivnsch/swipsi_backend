@@ -1,115 +1,37 @@
-use actix_web::{
-    get,
-    web::{self, Data},
-    App, HttpServer, Responder, Result,
-};
-use serde::Serialize;
-use sqlx::{postgres::PgPoolOptions, prelude::FromRow, Pool, Postgres};
+use std::{thread::sleep, time::Duration};
 
-#[derive(Debug, FromRow, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct Bike {
-    id: String,
-    #[serde(rename = "name")]
-    name_: String,
-    brand: String,
-    price: String,
-    price_number: f32,
-    pictures: Vec<String>,
-    vendor_link: String,
-    electric: bool,
-    #[serde(rename = "type")]
-    type_: String,
-    descr: String,
-    added_timestamp: i64,
-}
+use thirtyfour::prelude::*;
 
-#[get("/bikes")]
-async fn bikes(state: Data<AppState>) -> Result<impl Responder> {
-    Ok(web::Json(load_bikes(&state.db).await))
-}
+#[tokio::main]
+async fn main() -> WebDriverResult<()> {
+     let caps = DesiredCapabilities::chrome();
+     let driver = WebDriver::new("http://localhost:54970", caps).await?;
 
-async fn load_bikes(pool: &Pool<Postgres>) -> Vec<Bike> {
-    let res: Vec<Bike> = sqlx::query_as(
-        r#"
-SELECT
-    b.id::TEXT AS id,
-    b.name_,
-    b.brand,
-    b.price,
-    b.price_number,
-    b.vendor_link,
-    b.electric,
-    b.type_,
-    b.descr,
-    b.added_timestamp,
-    COALESCE(array_agg(bp.url) FILTER (WHERE bp.url IS NOT NULL), ARRAY[]::TEXT[]) AS pictures
-FROM
-    bike b
-LEFT JOIN
-    bike_pic bp ON b.id = bp.bike_id
-GROUP BY
-    b.id, b.name_, b.brand, b.price, b.price_number, b.vendor_link, b.electric, b.type_, b.descr, b.added_timestamp;
-"#,
-    )
-    .fetch_all(pool)
-    .await
-    .expect("error2");
+     // Navigate to https://wikipedia.org.
+     driver.goto("https://wikipedia.org").await?;
+     let elem_form = driver.find(By::Id("search-form")).await?;
 
-    res
-}
+     // Find element from element.
+     let elem_text = elem_form.find(By::Id("searchInput")).await?;
 
-pub struct AppState {
-    db: Pool<Postgres>,
-}
+     // Type in the search terms.
+     elem_text.send_keys("selenium").await?;
 
-#[actix_web::main]
-async fn main() -> std::io::Result<()> {
-    let pool = init_pool().await;
+     // Click the search button.
+     let elem_button = elem_form.find(By::Css("button[type='submit']")).await?;
+     elem_button.click().await?;
 
-    // consider removing this..
-    test_query(&pool).await;
+     // Look for header to implicitly wait for the page to load.
+     driver.find(By::ClassName("firstHeading")).await?;
+     assert_eq!(driver.title().await?, "Selenium - Wikipedia");
+     
+     println!("????");
+ 
+     loop {
+          sleep(Duration::from_secs(60));
+      } 
+      // Always explicitly close the browser.
+     // driver.quit().await?;
 
-    pool.acquire().await.expect("error acquiring connection");
-
-    HttpServer::new(move || {
-        App::new()
-            .app_data(Data::new(AppState { db: pool.clone() }))
-            .service(bikes)
-    })
-    // .bind(("127.0.0.1", 8080))?
-    .bind(("0.0.0.0", 8080))?
-    .run()
-    .await
-}
-
-async fn test_query(pool: &Pool<Postgres>) {
-    // Make a simple query to return the given parameter (use a question mark `?` instead of `$1` for MySQL/MariaDB)
-    let row: (i64,) = sqlx::query_as("SELECT $1")
-        .bind(150_i64)
-        .fetch_one(pool)
-        .await
-        .expect("error2");
-    println!("row: {row:?}");
-    assert_eq!(row.0, 150);
-}
-
-async fn init_pool() -> Pool<Postgres> {
-    PgPoolOptions::new()
-        .max_connections(5)
-        .connect("postgres://ivanschuetz:password@localhost/bikematch")
-        .await
-        .expect("error1")
-}
-
-#[cfg(test)]
-mod test {
-    use crate::{init_pool, load_bikes};
-
-    #[tokio::test]
-    async fn test() {
-        let pool = init_pool().await;
-        let bikes = load_bikes(&pool).await;
-        println!("bikes: {:?}", bikes); 
-    } 
+     Ok(())
 }
