@@ -1,7 +1,8 @@
 use actix_web::{get, web, App, HttpServer, Responder, Result};
-use chrono::Utc;
+use bigdecimal::BigDecimal;
+use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::Serialize;
-use sqlx::postgres::PgPoolOptions;
+use sqlx::{postgres::PgPoolOptions, prelude::FromRow, Pool, Postgres};
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -15,16 +16,9 @@ struct MyObj {
     vendor_link: String,
     electric: bool,
     #[serde(rename = "type")]
-    type_: BikeType,
+    type_: String,
     descr: String,
     added_timestamp: u64,
-}
-
-#[derive(Serialize)]
-enum BikeType {
-    Mountain,
-    Road,
-    Hybrid,
 }
 
 #[get("/bikes")]
@@ -42,7 +36,7 @@ async fn bikes() -> Result<impl Responder> {
             ],
             vendor_link: "https://google.com".to_string(),
             electric: false,
-            type_: BikeType::Mountain,
+            type_: "mountain".to_string(),
             descr: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum".to_string(),
             added_timestamp: Utc::now().timestamp_micros() as u64
         },
@@ -58,7 +52,7 @@ async fn bikes() -> Result<impl Responder> {
             ],
             vendor_link: "https://google.com".to_string(),
             electric: false,
-            type_: BikeType::Hybrid,
+            type_: "hybrid".to_string(),
             descr: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum".to_string(),
             added_timestamp: Utc::now().timestamp_micros() as u64
         },
@@ -74,11 +68,56 @@ async fn bikes() -> Result<impl Responder> {
             ],
             vendor_link: "https://google.com".to_string(),
             electric: true,
-            type_: BikeType::Road,
+            type_: "road".to_string(),
             descr: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum".to_string(),
             added_timestamp: Utc::now().timestamp_micros() as u64
         },
     ]))
+}
+
+#[derive(Debug, FromRow)]
+struct MyObj2 {
+    id: i32,
+    name_: String,
+    brand: String,
+    price: String,
+    price_number: f32,
+    pictures: Vec<String>,
+    vendor_link: String,
+    electric: bool,
+    type_: String,
+    descr: String,
+    added_timestamp: NaiveDateTime,
+}
+
+async fn load_bikes(pool: &Pool<Postgres>) -> Vec<MyObj2> {
+    let res: Vec<MyObj2> = sqlx::query_as(
+        r#"
+SELECT
+    f.id,
+    f.name_,
+    f.brand,
+    f.price,
+    f.price_number,
+    f.vendor_link,
+    f.electric,
+    f.type_,
+    f.descr,
+    f.added_timestamp,
+    COALESCE(array_agg(fp.url), ARRAY[]::TEXT[]) AS pictures
+FROM
+    bike f
+LEFT JOIN
+    bike_pic fp ON f.id = fp.bike_id
+GROUP BY
+    f.id, f.name_, f.brand, f.price, f.price_number, f.vendor_link, f.electric, f.type_, f.descr, f.added_timestamp;
+"#,
+    )
+    .fetch_all(pool)
+    .await
+    .expect("error2");
+
+    res
 }
 
 // #[actix_web::main] // or #[tokio::main]
@@ -94,11 +133,7 @@ async fn bikes() -> Result<impl Responder> {
 async fn main() -> std::io::Result<()> {
     println!("Attempting to connect...");
 
-    let pool = PgPoolOptions::new()
-        .max_connections(5)
-        .connect("postgres://ivanschuetz:password@localhost/bikematch")
-        .await
-        .expect("error1");
+    let pool = init_pool().await;
     println!("Connected successfully!");
 
     // Make a simple query to return the given parameter (use a question mark `?` instead of `$1` for MySQL/MariaDB)
@@ -119,4 +154,26 @@ async fn main() -> std::io::Result<()> {
         .bind(("0.0.0.0", 8080))?
         .run()
         .await
+}
+
+async fn init_pool() -> Pool<Postgres> {
+    PgPoolOptions::new()
+        .max_connections(5)
+        .connect("postgres://ivanschuetz:password@localhost/bikematch")
+        .await
+        .expect("error1")
+}
+
+#[cfg(test)]
+mod test {
+    use crate::{init_pool, load_bikes};
+
+    #[tokio::test]
+    async fn test() {
+        let pool = init_pool().await;
+
+        let bikes = load_bikes(&pool).await;
+
+        println!("bikes: {:?}", bikes);
+    }
 }
