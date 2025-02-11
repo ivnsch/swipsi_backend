@@ -11,13 +11,15 @@ async fn extract_links(container: &WebElement) -> Result<Vec<String>> {
 
           // get link..
 
-          let link = child.find_all(By::Css(".a-link-normal.s-line-clamp-2.s-link-style.a-text-normal")).await?;
+          let link = child.find_all(By::Css(".a-link-normal.s-link-style.a-text-normal")).await?;
           // println!("link elements: {:?}", link.len()); 
           if link.len() == 1 {
                let link = &link[0];
                let href = link.attr("href").await?.unwrap_or_default();
                println!("link: {:?}", href);
                hrefs.push(href);
+          } else {
+               println!("no links or too many links found: {}", link.len());
           }
 
           // get name (not used right now)..
@@ -30,7 +32,7 @@ async fn extract_links(container: &WebElement) -> Result<Vec<String>> {
 
           if name.len() == 1 {
                let name = &name[0];
-               println!("{:?}", name);
+               // println!("{:?}", name);
 
                let spans = name.find_all(By::Tag("span")).await?;
                // println!("spans len: {:?}", spans);
@@ -56,9 +58,7 @@ async fn extract_links(container: &WebElement) -> Result<Vec<String>> {
      // driver.find(By::ClassName("firstHeading")).await?;
      // assert_eq!(driver.title().await?, "Selenium - Wikipedia");
      
-     println!("????");
-
-     println!("finish! extrancted links: {:?}", hrefs.len());
+     println!("finish a page! extracted links: {:?}", hrefs.len());
 
      Ok(hrefs)
 }
@@ -107,41 +107,66 @@ async fn extract_imgs_from_details(driver: &WebDriver) -> Result<Vec<String>> {
      Ok(imgs)
 }
 
+async fn is_in_last_page(driver: &WebDriver) -> Result<bool> {
+     let next_page_disabled = driver.find_all(By::Css(".s-pagination-item.s-pagination-next.s-pagination-disabled")).await?;
+     Ok(!next_page_disabled.is_empty())
+}
+
+async fn extract_links_for_all_pages(driver: &WebDriver, root_url: &str) -> Result<Vec<String>> {
+     driver.goto(root_url).await?;
+
+     // reject cookies - otherwise overlay might get in the way
+     reject_cookies(driver).await?;
+
+     let mut next_page = 2;
+     let mut all_links = vec![];
+
+     // while !is_in_last_page(&driver).await.expect("error checking is last page")  {
+          let container = driver.find(By::ClassName("s-main-slot")).await?;
+          let page_links = extract_links(&container).await.expect("...");
+          all_links.extend(page_links);
+
+          let next_page_par = format!("&page={}", next_page);
+          driver.goto(format!("{}{}", root_url, next_page_par)).await?;
+
+          next_page += 1;
+     // }
+
+     println!("finished extracting links for {} pages", next_page - 1);
+     Ok(all_links)
+}
+
 #[tokio::main]
 async fn main() -> WebDriverResult<()> {
      let caps = DesiredCapabilities::chrome();
      let driver = WebDriver::new("http://localhost:54970", caps).await?;
 
-     // Navigate to https://wikipedia.org.
-     // driver.goto("https://www.amazon.de/s?k=ringe&i=fashion").await?;
-     // let container = driver.find(By::ClassName("s-main-slot")).await?;
+     // let root_url: &str = "https://www.amazon.de/s?k=ringe&i=fashion";
+     let root_url: &str = "https://www.amazon.de/s?k=disinfectant+hand";
 
-     // let children = container.find_all(By::XPath("./*")).await?;
+     let links = extract_links_for_all_pages(&driver, root_url).await.expect("couldn't extract links");
+     println!("extracted links ({}) for all pages: {:?}", links.len(), links);
 
-    
-//     let links = extract_links(&container).await.expect("...");
-    // TODO pages
+     // // for link in links {
+     //      // let link = &links[0];
+     //      // let full_link = format!("https://amazon.de{}", link);
+     //      let full_link = "https://amazon.de/sspa/click?ie=UTF8&spc=MTo1NzU5Nzg0NjQ1NTU0NDQ3OjE3MzkyODE1MTc6c3BfYXRmOjMwMDM0NTQ5MTgzMDkzMjo6MDo6&url=%2Fs-Oliver-Damen-Ring-Edelstahl-Swarovski-Kristalle-Breite%2Fdp%2FB07FD729LJ%2Fref%3Dsr_1_1_sspa%3Fdib%3DeyJ2IjoiMSJ9.bMcM1L4llnp90s8_saI8idf565ai9cImntwXUe2M0C30kPlwkWo5Mq4k3_LOO0SUP9Sofu-TCe-QjGORDi_lOu27QdUkGVQWDkjZXEkky-eccusHY51_ZOZkG17ILR6j87jO3SruEkxLu8sLzm2M7EP6395CeKLq3xLgZsCr1FWu1PM-L2BtlBGGPGKgP6VPXRnH_EK8ZyqTJCR-L74_FOdgcQ7VB_brEhBqiDW4enmS4wKswD83qTT5kzf08WvEkMwIYAOBQkfef6kEkzc6v7W3IWaTZ5ScMQUc7i1zfjU.IPHI5Mxj-tn6zvcwFmWLZHZjVOKsEfuykyn9d1QDWCE%26dib_tag%3Dse%26keywords%3Dringe%26qid%3D1739281517%26s%3Dapparel%26sr%3D1-1-spons%26sp_csd%3Dd2lkZ2V0TmFtZT1zcF9hdGY%26psc%3D1".to_string();
+     //      // println!("!! link: {}", full_link);
 
-     // for link in links {
-          // let link = &links[0];
-          // let full_link = format!("https://amazon.de{}", link);
-          let full_link = "https://amazon.de/sspa/click?ie=UTF8&spc=MTo1NzU5Nzg0NjQ1NTU0NDQ3OjE3MzkyODE1MTc6c3BfYXRmOjMwMDM0NTQ5MTgzMDkzMjo6MDo6&url=%2Fs-Oliver-Damen-Ring-Edelstahl-Swarovski-Kristalle-Breite%2Fdp%2FB07FD729LJ%2Fref%3Dsr_1_1_sspa%3Fdib%3DeyJ2IjoiMSJ9.bMcM1L4llnp90s8_saI8idf565ai9cImntwXUe2M0C30kPlwkWo5Mq4k3_LOO0SUP9Sofu-TCe-QjGORDi_lOu27QdUkGVQWDkjZXEkky-eccusHY51_ZOZkG17ILR6j87jO3SruEkxLu8sLzm2M7EP6395CeKLq3xLgZsCr1FWu1PM-L2BtlBGGPGKgP6VPXRnH_EK8ZyqTJCR-L74_FOdgcQ7VB_brEhBqiDW4enmS4wKswD83qTT5kzf08WvEkMwIYAOBQkfef6kEkzc6v7W3IWaTZ5ScMQUc7i1zfjU.IPHI5Mxj-tn6zvcwFmWLZHZjVOKsEfuykyn9d1QDWCE%26dib_tag%3Dse%26keywords%3Dringe%26qid%3D1739281517%26s%3Dapparel%26sr%3D1-1-spons%26sp_csd%3Dd2lkZ2V0TmFtZT1zcF9hdGY%26psc%3D1".to_string();
-          // println!("!! link: {}", full_link);
+     //      driver.goto(full_link).await?;
 
-          driver.goto(full_link).await?;
+     //      let imgs = extract_imgs_from_details(&driver).await.expect("couldn't extract imgs from details");
 
-          let imgs = extract_imgs_from_details(&driver).await.expect("couldn't extract imgs from details");
-
-          println!("images: {:?}", imgs);
-     // }
+     //      println!("images: {:?}", imgs);
+     // // }
 
       // Keep the browser open by looping indefinitely
-     //  loop {
-     //      tokio::time::sleep(std::time::Duration::from_secs(60)).await;
-     //  }
+      loop {
+          tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+      }
 
       // Always explicitly close the browser.
-     driver.quit().await?;
+     // driver.quit().await?;
 
      Ok(())
 }
