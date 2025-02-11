@@ -152,8 +152,8 @@ async fn main() -> WebDriverResult<()> {
      let caps = DesiredCapabilities::chrome();
      let driver = WebDriver::new("http://localhost:54970", caps).await?;
 
-     // let root_url: &str = "https://www.amazon.de/s?k=ringe&i=fashion";
-     let root_url: &str = "https://www.amazon.de/s?k=disinfectant+hand";
+     let root_url: &str = "https://www.amazon.de/s?k=ringe&i=fashion";
+     // let root_url: &str = "https://www.amazon.de/s?k=disinfectant+hand";
 
      let links = extract_links_for_all_pages(&driver, root_url).await.expect("couldn't extract links");
      // println!("extracted links ({}) for all pages: {:?}", links.len(), links);
