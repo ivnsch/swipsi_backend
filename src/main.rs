@@ -104,7 +104,7 @@ SELECT
     f.type_,
     f.descr,
     f.added_timestamp,
-    COALESCE(array_agg(fp.url), ARRAY[]::TEXT[]) AS pictures
+    COALESCE(array_agg(fp.url) FILTER (WHERE fp.url IS NOT NULL), ARRAY[]::TEXT[]) AS pictures
 FROM
     bike f
 LEFT JOIN
