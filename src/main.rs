@@ -70,16 +70,8 @@ async fn main() -> std::io::Result<()> {
     let pool = init_pool().await;
     println!("Connected successfully!");
 
-    // Make a simple query to return the given parameter (use a question mark `?` instead of `$1` for MySQL/MariaDB)
-    let row: (i64,) = sqlx::query_as("SELECT $1")
-        .bind(150_i64)
-        .fetch_one(&pool)
-        .await
-        .expect("error2");
-
-    println!("row: {row:?}");
-
-    assert_eq!(row.0, 150);
+    // consider removing this..
+    test_query(&pool).await;
 
     pool.acquire().await.expect("error acquiring connection");
 
@@ -92,6 +84,17 @@ async fn main() -> std::io::Result<()> {
     .bind(("0.0.0.0", 8080))?
     .run()
     .await
+}
+
+async fn test_query(pool: &Pool<Postgres>) {
+    // Make a simple query to return the given parameter (use a question mark `?` instead of `$1` for MySQL/MariaDB)
+    let row: (i64,) = sqlx::query_as("SELECT $1")
+        .bind(150_i64)
+        .fetch_one(pool)
+        .await
+        .expect("error2");
+    println!("row: {row:?}");
+    assert_eq!(row.0, 150);
 }
 
 async fn init_pool() -> Pool<Postgres> {
