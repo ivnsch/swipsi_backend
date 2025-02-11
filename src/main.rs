@@ -11,17 +11,28 @@ async fn extract_links(container: &WebElement) -> Result<Vec<String>> {
 
           // get link..
 
-          let link = child.find_all(By::Css(".a-link-normal.s-link-style.a-text-normal")).await?;
-          // println!("link elements: {:?}", link.len()); 
-          if link.len() == 1 {
-               let link = &link[0];
-               let href = link.attr("href").await?.unwrap_or_default();
-               println!("link: {:?}", href);
-               hrefs.push(href);
+          let link_wrappers = child.find_all(By::ClassName("s-title-instructions-style")).await?;
+          if link_wrappers.len() == 1 {
+               let link_wrapper = &link_wrappers[0];
+               let link = link_wrapper.find_all(By::Tag("a")).await?;
+               // let link = child.find_all(By::Css(".a-link-normal.s-link-style.a-text-normal")).await?;
+               // println!("link elements: {:?}", link.len()); 
+               if link.len() == 1 {
+                    let link = &link[0];
+                    let href = link.attr("href").await?.unwrap_or_default();
+                    // println!("link: {:?}", href);
+                    hrefs.push(href);
+               } else {
+                    println!("no links or too many found: {}", link.len());
+               }
           } else {
-               println!("no links or too many links found: {}", link.len());
+               println!("no link wrappers or too many found: {}", link_wrappers.len());
           }
 
+
+
+
+      
           // get name (not used right now)..
 
           let name = child.find_all(By::Css(".a-size-base-plus.a-spacing-none")).await?;
@@ -121,7 +132,7 @@ async fn extract_links_for_all_pages(driver: &WebDriver, root_url: &str) -> Resu
      let mut next_page = 2;
      let mut all_links = vec![];
 
-     // while !is_in_last_page(&driver).await.expect("error checking is last page")  {
+     while !is_in_last_page(&driver).await.expect("error checking is last page")  {
           let container = driver.find(By::ClassName("s-main-slot")).await?;
           let page_links = extract_links(&container).await.expect("...");
           all_links.extend(page_links);
@@ -130,7 +141,7 @@ async fn extract_links_for_all_pages(driver: &WebDriver, root_url: &str) -> Resu
           driver.goto(format!("{}{}", root_url, next_page_par)).await?;
 
           next_page += 1;
-     // }
+     }
 
      println!("finished extracting links for {} pages", next_page - 1);
      Ok(all_links)
@@ -145,7 +156,8 @@ async fn main() -> WebDriverResult<()> {
      let root_url: &str = "https://www.amazon.de/s?k=disinfectant+hand";
 
      let links = extract_links_for_all_pages(&driver, root_url).await.expect("couldn't extract links");
-     println!("extracted links ({}) for all pages: {:?}", links.len(), links);
+     // println!("extracted links ({}) for all pages: {:?}", links.len(), links);
+     println!("extracted links ({}) for all pages", links.len());
 
      // // for link in links {
      //      // let link = &links[0];
