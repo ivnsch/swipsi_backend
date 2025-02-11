@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS bike (
     type_ VARCHAR(255),
     -- todo consider varchar with max limit
     descr TEXT,
-    added_timestamp TIMESTAMP DEFAULT NOW()
+    added_timestamp BIGINT
 );
 
 CREATE TABLE IF NOT EXISTS bike_pic (
