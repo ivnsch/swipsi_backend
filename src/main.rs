@@ -6,26 +6,9 @@ use actix_web::{
 use serde::Serialize;
 use sqlx::{postgres::PgPoolOptions, prelude::FromRow, Pool, Postgres};
 
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct MyObj {
-    id: String,
-    name: String,
-    brand: String,
-    price: String,
-    price_number: f32,
-    pictures: Vec<String>,
-    vendor_link: String,
-    electric: bool,
-    #[serde(rename = "type")]
-    type_: String,
-    descr: String,
-    added_timestamp: u64,
-}
-
 #[derive(Debug, FromRow, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct MyObj2 {
+struct MyObj {
     id: String,
     #[serde(rename = "name")]
     name_: String,
@@ -46,8 +29,8 @@ async fn bikes(state: Data<AppState>) -> Result<impl Responder> {
     Ok(web::Json(load_bikes(&state.db).await))
 }
 
-async fn load_bikes(pool: &Pool<Postgres>) -> Vec<MyObj2> {
-    let res: Vec<MyObj2> = sqlx::query_as(
+async fn load_bikes(pool: &Pool<Postgres>) -> Vec<MyObj> {
+    let res: Vec<MyObj> = sqlx::query_as(
         r#"
 SELECT
     b.id::TEXT AS id,
