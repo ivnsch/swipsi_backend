@@ -89,8 +89,46 @@ async fn extract_name(container: &WebElement) -> Result<String> {
 
 async fn extract_img(container: &WebElement) -> Result<String> {
     let img = container.find(By::ClassName("s-image")).await?;
-    let img_src = img.attr("src").await?.unwrap_or_default();
-    Ok(img_src)
+    // img_src is low res which we don't need currently
+    // let img_src = img.attr("src").await?.unwrap_or_default();
+    let img_src_set = img.attr("srcset").await?.unwrap_or_default();
+    println!("image src set: {:?}", img_src_set);
+
+    let highest_res_img = extract_highest_res_img(&img_src_set)?;
+
+    Ok(highest_res_img)
+}
+
+// amazon adds an attribute to images in overview srcset with entries separated by ,
+// respectively containing a src and a string denoting resolution (like "2x")
+// we choose the highest res string, which empirically it's about right (slightly lower probably) for mobile devices.
+fn extract_highest_res_img(src_set: &str) -> Result<String> {
+    let resolution_entries = src_set.split(",").map(|e| e.trim()).collect::<Vec<&str>>();
+
+    // note: we assume highest resolution to be the last
+    // if we wanted to be more robust we'd parse all the resolutions and get highest
+    // but it seems that highest is always returned last so using that for now
+    if let Some(last) = resolution_entries.last() {
+        let parts = last.split_whitespace().collect::<Vec<&str>>();
+        if parts.len() == 2 {
+            let src = parts[0].trim();
+            let res = parts[1].trim();
+
+            if res != "3x" {
+                // either we got a higher than 3x resolution (seems not to exist currently? or they're not sorted as expected)
+                println!("warn: last resolution isn't 3x, are we getting the highest res?")
+            }
+
+            Ok(src.to_string())
+        } else {
+            // a resolution looks like this: 1x, 1.5x and so on
+            Err(anyhow!(
+                "unexpected: srcset entries should be `<imagepath> <resolution>`"
+            ))
+        }
+    } else {
+        Err(anyhow!("unexpected: srcset didn't contain any images"))
+    }
 }
 
 async fn extract_price(container: &WebElement) -> Result<String> {
