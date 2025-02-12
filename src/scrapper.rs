@@ -131,7 +131,7 @@ fn extract_highest_res_img(src_set: &str) -> Result<String> {
     }
 }
 
-async fn extract_price(container: &WebElement) -> Result<String> {
+async fn extract_price(container: &WebElement) -> Result<(String, f32)> {
     let whole_part = container.find(By::ClassName("a-price-whole")).await?;
     let fraction_part = container.find(By::ClassName("a-price-fraction")).await?;
     let symbol_part = container.find(By::ClassName("a-price-symbol")).await?;
@@ -142,17 +142,22 @@ async fn extract_price(container: &WebElement) -> Result<String> {
         println!("unexpected currency symbol: {}", symbol_part);
     }
 
-    Ok(format!(
+    let price_str = format!(
         "{}.{}",
         whole_part.text().await?,
         fraction_part.text().await?
-    ))
+    );
+
+    let price_float = price_str.parse()?;
+
+    Ok((price_str, price_float))
 }
 
 pub struct ProductInfo {
     name: String,
     details_link: String,
     price: String,
+    price_number: f32,
     img: String,
 }
 
@@ -165,7 +170,8 @@ async fn extract_product_info(container: &WebElement) -> Result<ProductInfo> {
                         return Ok(ProductInfo {
                             name,
                             details_link: link,
-                            price,
+                            price: price.0,
+                            price_number: price.1,
                             img,
                         })
                     }
