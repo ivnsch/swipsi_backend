@@ -54,20 +54,39 @@ async fn extract_name(container: &WebElement) -> Result<String> {
     }
 }
 
+async fn extract_price(container: &WebElement) -> Result<String> {
+    let whole_part = container.find(By::ClassName("a-price-whole")).await?;
+    let fraction_part = container.find(By::ClassName("a-price-fraction")).await?;
+    let symbol_part = container.find(By::ClassName("a-price-symbol")).await?;
+
+    if symbol_part.text().await? != "€" {
+        // we assume all prices are always euros, but a double check just in case
+        // TODO we should return an error here
+        println!("unexpected currency symbol: {}", symbol_part);
+    }
+
+    Ok(format!("{}.{}", whole_part, fraction_part))
+}
+
 struct ProductInfo {
     name: String,
     details_link: String,
+    price: String,
 }
 
 async fn extract_product_info(container: &WebElement) -> Result<ProductInfo> {
     match extract_link(container).await {
         Ok(link) => match extract_name(container).await {
-            Ok(name) => {
-                return Ok(ProductInfo {
-                    name,
-                    details_link: link,
-                })
-            }
+            Ok(name) => match extract_price(container).await {
+                Ok(price) => {
+                    return Ok(ProductInfo {
+                        name,
+                        details_link: link,
+                        price,
+                    })
+                }
+                Err(e) => return Err(anyhow!("error extracting price: {}", e)),
+            },
             Err(e) => return Err(anyhow!("error extracting name: {}", e)),
         },
         Err(e) => return Err(anyhow!("error extracting link: {}", e)),
