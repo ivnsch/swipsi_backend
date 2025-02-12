@@ -123,7 +123,7 @@ async fn extract_imgs_from_details(driver: &WebDriver) -> Result<Vec<String>> {
      Ok(imgs)
 }
 
-struct ProductInfos {
+struct ProductDetailsInfos {
      name: String
 }
 
@@ -132,10 +132,10 @@ struct ProductDetails {
      images: Vec<String>
 }
 
-async fn extract_infos_from_details(driver: &WebDriver) -> Result<ProductInfos> {
+async fn extract_infos_from_details(driver: &WebDriver) -> Result<ProductDetailsInfos> {
      let name_span = driver.find(By::Id("productTitle")).await.expect("no title in details");
      let name: String = name_span.text().await?;
-     Ok(ProductInfos { name })
+     Ok(ProductDetailsInfos { name })
 }
 
 async fn extract_product_details(driver: &WebDriver, link: &str) -> Result<ProductDetails> {
