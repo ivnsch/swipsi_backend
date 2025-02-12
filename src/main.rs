@@ -2,6 +2,7 @@ pub mod scrapper;
 
 use actix_web::{
     get,
+    middleware::Logger,
     web::{self, Data},
     App, HttpServer, Responder, Result,
 };
@@ -100,6 +101,8 @@ pub struct AppState {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    env_logger::init_from_env(env_logger::Env::new().default_filter_or("debug"));
+
     let pool = init_pool().await;
 
     // consider removing this..
@@ -109,8 +112,10 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(move || {
         App::new()
+            .wrap(Logger::default())
             .app_data(Data::new(AppState { db: pool.clone() }))
             .service(bikes)
+            .service(items)
     })
     // .bind(("127.0.0.1", 8080))?
     .bind(("0.0.0.0", 3000))?
