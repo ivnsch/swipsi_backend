@@ -54,6 +54,12 @@ async fn extract_name(container: &WebElement) -> Result<String> {
     }
 }
 
+async fn extract_img(container: &WebElement) -> Result<String> {
+    let img = container.find(By::ClassName("s-image")).await?;
+    let img_src = img.attr("src").await?.unwrap_or_default();
+    Ok(img_src)
+}
+
 async fn extract_price(container: &WebElement) -> Result<String> {
     let whole_part = container.find(By::ClassName("a-price-whole")).await?;
     let fraction_part = container.find(By::ClassName("a-price-fraction")).await?;
@@ -72,19 +78,24 @@ struct ProductInfo {
     name: String,
     details_link: String,
     price: String,
+    img: String,
 }
 
 async fn extract_product_info(container: &WebElement) -> Result<ProductInfo> {
     match extract_link(container).await {
         Ok(link) => match extract_name(container).await {
             Ok(name) => match extract_price(container).await {
-                Ok(price) => {
-                    return Ok(ProductInfo {
-                        name,
-                        details_link: link,
-                        price,
-                    })
-                }
+                Ok(price) => match extract_img(container).await {
+                    Ok(img) => {
+                        return Ok(ProductInfo {
+                            name,
+                            details_link: link,
+                            price,
+                            img,
+                        })
+                    }
+                    Err(e) => return Err(anyhow!("error extracting img: {}", e)),
+                },
                 Err(e) => return Err(anyhow!("error extracting price: {}", e)),
             },
             Err(e) => return Err(anyhow!("error extracting name: {}", e)),
