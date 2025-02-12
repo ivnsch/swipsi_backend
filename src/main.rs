@@ -49,7 +49,7 @@ async fn extract_links(container: &WebElement) -> Result<Vec<String>> {
                // println!("spans len: {:?}", spans);
                if spans.len() == 1 {
                     let span = &spans[0];
-                    let span_text = span.text().await?;
+                    let span_text: String = span.text().await?;
                     // println!("text: {:?}", span_text);
                }
           }
@@ -118,6 +118,33 @@ async fn extract_imgs_from_details(driver: &WebDriver) -> Result<Vec<String>> {
      Ok(imgs)
 }
 
+struct ProductInfos {
+     name: String
+}
+
+struct ProductDetails {
+     name: String,
+     images: Vec<String>
+}
+
+async fn extract_infos_from_details(driver: &WebDriver) -> Result<ProductInfos> {
+     let name_span = driver.find(By::Id("productTitle")).await.expect("no title in details");
+     let name: String = name_span.text().await?;
+     Ok(ProductInfos { name })
+}
+
+async fn extract_product_details(driver: &WebDriver, link: &str) -> Result<ProductDetails> {
+     driver.goto(link).await?;
+
+     let images = extract_imgs_from_details(driver).await?;
+     let infos = extract_infos_from_details(driver).await?;
+
+     Ok(ProductDetails {
+        name: infos.name.clone(),
+        images,
+    })
+}
+
 async fn is_in_last_page(driver: &WebDriver) -> Result<bool> {
      let next_page_disabled = driver.find_all(By::Css(".s-pagination-item.s-pagination-next.s-pagination-disabled")).await?;
      Ok(!next_page_disabled.is_empty())
@@ -159,17 +186,15 @@ async fn main() -> WebDriverResult<()> {
      // println!("extracted links ({}) for all pages: {:?}", links.len(), links);
      println!("extracted links ({}) for all pages", links.len());
 
+     // collect details
+     let mut product_details: Vec<ProductDetails> = vec![];
      for link in links {
           let full_link = format!("https://amazon.de{}", link);
-
           // example link to test just one page (comment loop)
           // let full_link = "https://amazon.de/sspa/click?ie=UTF8&spc=MTo1NzU5Nzg0NjQ1NTU0NDQ3OjE3MzkyODE1MTc6c3BfYXRmOjMwMDM0NTQ5MTgzMDkzMjo6MDo6&url=%2Fs-Oliver-Damen-Ring-Edelstahl-Swarovski-Kristalle-Breite%2Fdp%2FB07FD729LJ%2Fref%3Dsr_1_1_sspa%3Fdib%3DeyJ2IjoiMSJ9.bMcM1L4llnp90s8_saI8idf565ai9cImntwXUe2M0C30kPlwkWo5Mq4k3_LOO0SUP9Sofu-TCe-QjGORDi_lOu27QdUkGVQWDkjZXEkky-eccusHY51_ZOZkG17ILR6j87jO3SruEkxLu8sLzm2M7EP6395CeKLq3xLgZsCr1FWu1PM-L2BtlBGGPGKgP6VPXRnH_EK8ZyqTJCR-L74_FOdgcQ7VB_brEhBqiDW4enmS4wKswD83qTT5kzf08WvEkMwIYAOBQkfef6kEkzc6v7W3IWaTZ5ScMQUc7i1zfjU.IPHI5Mxj-tn6zvcwFmWLZHZjVOKsEfuykyn9d1QDWCE%26dib_tag%3Dse%26keywords%3Dringe%26qid%3D1739281517%26s%3Dapparel%26sr%3D1-1-spons%26sp_csd%3Dd2lkZ2V0TmFtZT1zcF9hdGY%26psc%3D1".to_string();
+          let details = extract_product_details(&driver, &full_link).await.expect("couldn't extract details");
 
-          driver.goto(full_link).await?;
-
-          let imgs = extract_imgs_from_details(&driver).await.expect("couldn't extract imgs from details");
-
-          println!("images: {:?}", imgs);
+          product_details.push(details);
      }
 
       // Keep the browser open by looping indefinitely
