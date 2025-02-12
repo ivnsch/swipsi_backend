@@ -1,5 +1,7 @@
 use anyhow::{anyhow, Result};
+use chrono::Utc;
 use csv::Writer;
+use sqlx::{Pool, Postgres};
 use thirtyfour::prelude::*;
 use url::Url;
 
@@ -350,7 +352,7 @@ async fn collect_details(driver: &WebDriver, infos: &[ProductInfo]) -> Result<Ve
     Ok(product_details)
 }
 
-fn to_csv(infos: &[ProductInfo]) -> Result<()> {
+pub fn to_csv(infos: &[ProductInfo]) -> Result<()> {
     let mut wtr = Writer::from_path("product_infos.csv")?;
     for info in infos {
         wtr.write_record(&[
@@ -365,12 +367,101 @@ fn to_csv(infos: &[ProductInfo]) -> Result<()> {
     Ok(())
 }
 
+pub async fn save_products_to_db(
+    pool: &Pool<Postgres>,
+    infos: &[ProductInfo],
+    type_: &str,
+) -> Result<()> {
+    for info in infos {
+        save_product_to_db(pool, info, type_).await?;
+    }
+
+    Ok(())
+}
+
+async fn save_product_to_db(pool: &Pool<Postgres>, infos: &ProductInfo, type_: &str) -> Result<()> {
+    let row: (i32,) = sqlx::query_as(
+        r#"
+INSERT INTO bike (name_, price, price_number, vendor_link, type_, added_timestamp, descr)
+VALUES ($1, $2, $3, $4, $5, $6, $7) 
+RETURNING id;
+"#,
+    )
+    .bind(infos.name.clone())
+    .bind(infos.price.clone())
+    .bind(infos.price_number)
+    .bind(infos.details_link.clone())
+    .bind(type_)
+    .bind(Utc::now().timestamp_micros())
+    .bind("")
+    .fetch_one(pool)
+    .await
+    .expect("Failed to insert product");
+
+    sqlx::query(
+        r#"
+INSERT INTO bike_pic (bike_id, url)
+VALUES ($1, $2);
+"#,
+    )
+    .bind(row.0)
+    .bind(infos.img.clone())
+    .execute(pool)
+    .await
+    .expect("Failed to insert product picture");
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod test {
     use anyhow::Result;
     use thirtyfour::{DesiredCapabilities, WebDriver};
 
-    use crate::scrapper::{extract_infos_for_all_pages, to_csv};
+    use crate::{
+        init_pool,
+        scrapper::{
+            extract_infos_for_all_pages, save_product_to_db, save_products_to_db, ProductInfo,
+        },
+    };
+
+    #[tokio::test]
+    async fn insert_mock_info() -> Result<()> {
+        let info = ProductInfo {
+            name: "mock product 1".to_string(),
+            details_link: "https://foo.bar/aaa".to_string(),
+            price: "123.12".to_string(),
+            price_number: 123.12,
+            img: "https://doesntexist.com/foo.png".to_string(),
+        };
+
+        let pool = init_pool().await;
+        save_product_to_db(&pool, &info, "mock").await?;
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn insert_2_mock_infos() -> Result<()> {
+        let info1 = ProductInfo {
+            name: "mock product 1".to_string(),
+            details_link: "https://foo.bar/aaa".to_string(),
+            price: "123.12".to_string(),
+            price_number: 123.12,
+            img: "https://doesntexist.com/foo.png".to_string(),
+        };
+        let info2 = ProductInfo {
+            name: "mock product 2".to_string(),
+            details_link: "https://foo.bar/bbb".to_string(),
+            price: "223.12".to_string(),
+            price_number: 223.12,
+            img: "https://doesntexist.com/foo2.png".to_string(),
+        };
+        let pool = init_pool().await;
+        save_products_to_db(&pool, &vec![info1, info2], "mock").await?;
+
+        Ok(())
+    }
 
     #[tokio::test]
     async fn scrap() -> Result<()> {
@@ -386,7 +477,9 @@ mod test {
 
         println!("extracted links ({}) for all pages", infos.len());
 
-        to_csv(&infos)?;
+        // to_csv(&infos)?;
+        let pool = init_pool().await;
+        save_products_to_db(&pool, &infos, "hand disinfectant").await?;
 
         // // collect details
         // collect_details(&driver, &infos)
