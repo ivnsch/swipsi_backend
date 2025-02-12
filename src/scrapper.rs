@@ -470,7 +470,7 @@ mod test {
 
         // let root_url: &str = "https://www.amazon.de/s?k=ringe&i=fashion";
         // only a few pages
-        let root_url: &str = "https://www.amazon.de/s?k=disinfectant+hand";
+        let root_url: &str = "https://www.amazon.de/s?k=naruto+figurine";
 
         let infos = extract_infos_for_all_pages(&driver, root_url).await?;
         // println!("extracted links ({}) for all pages: {:?}", links.len(), links);
@@ -479,7 +479,7 @@ mod test {
 
         // to_csv(&infos)?;
         let pool = init_pool().await;
-        save_products_to_db(&pool, &infos, "hand disinfectant").await?;
+        save_products_to_db(&pool, &infos, "figurine").await?;
 
         // // collect details
         // collect_details(&driver, &infos)
