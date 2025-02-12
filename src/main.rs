@@ -72,7 +72,11 @@ async fn extract_price(container: &WebElement) -> Result<String> {
         println!("unexpected currency symbol: {}", symbol_part);
     }
 
-    Ok(format!("{}.{}", whole_part, fraction_part))
+    Ok(format!(
+        "{}.{}",
+        whole_part.text().await?,
+        fraction_part.text().await?
+    ))
 }
 
 struct ProductInfo {
