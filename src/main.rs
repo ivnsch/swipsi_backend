@@ -236,6 +236,28 @@ async fn extract_infos_for_all_pages(
     Ok(all_links)
 }
 
+async fn collect_details(driver: &WebDriver, infos: &[ProductInfo]) -> Result<Vec<ProductDetails>> {
+    let mut product_details: Vec<ProductDetails> = vec![];
+    for info in infos {
+        let full_link = format!("https://amazon.de{}", info.details_link);
+        // example link to test just one page (comment loop)
+        // let full_link = "https://amazon.de/sspa/click?ie=UTF8&spc=MTo1NzU5Nzg0NjQ1NTU0NDQ3OjE3MzkyODE1MTc6c3BfYXRmOjMwMDM0NTQ5MTgzMDkzMjo6MDo6&url=%2Fs-Oliver-Damen-Ring-Edelstahl-Swarovski-Kristalle-Breite%2Fdp%2FB07FD729LJ%2Fref%3Dsr_1_1_sspa%3Fdib%3DeyJ2IjoiMSJ9.bMcM1L4llnp90s8_saI8idf565ai9cImntwXUe2M0C30kPlwkWo5Mq4k3_LOO0SUP9Sofu-TCe-QjGORDi_lOu27QdUkGVQWDkjZXEkky-eccusHY51_ZOZkG17ILR6j87jO3SruEkxLu8sLzm2M7EP6395CeKLq3xLgZsCr1FWu1PM-L2BtlBGGPGKgP6VPXRnH_EK8ZyqTJCR-L74_FOdgcQ7VB_brEhBqiDW4enmS4wKswD83qTT5kzf08WvEkMwIYAOBQkfef6kEkzc6v7W3IWaTZ5ScMQUc7i1zfjU.IPHI5Mxj-tn6zvcwFmWLZHZjVOKsEfuykyn9d1QDWCE%26dib_tag%3Dse%26keywords%3Dringe%26qid%3D1739281517%26s%3Dapparel%26sr%3D1-1-spons%26sp_csd%3Dd2lkZ2V0TmFtZT1zcF9hdGY%26psc%3D1".to_string();
+
+        match extract_product_details(driver, &full_link).await {
+            Ok(details) => {
+                product_details.push(details);
+            }
+            Err(e) => {
+                println!(
+                    "Couldn't extract product details for: {}, error: {}",
+                    full_link, e
+                )
+            }
+        }
+    }
+    Ok(product_details)
+}
+
 #[tokio::main]
 async fn main() -> WebDriverResult<()> {
     let caps = DesiredCapabilities::chrome();
@@ -252,24 +274,9 @@ async fn main() -> WebDriverResult<()> {
     println!("extracted links ({}) for all pages", infos.len());
 
     // collect details
-    let mut product_details: Vec<ProductDetails> = vec![];
-    for info in infos {
-        let full_link = format!("https://amazon.de{}", info.details_link);
-        // example link to test just one page (comment loop)
-        // let full_link = "https://amazon.de/sspa/click?ie=UTF8&spc=MTo1NzU5Nzg0NjQ1NTU0NDQ3OjE3MzkyODE1MTc6c3BfYXRmOjMwMDM0NTQ5MTgzMDkzMjo6MDo6&url=%2Fs-Oliver-Damen-Ring-Edelstahl-Swarovski-Kristalle-Breite%2Fdp%2FB07FD729LJ%2Fref%3Dsr_1_1_sspa%3Fdib%3DeyJ2IjoiMSJ9.bMcM1L4llnp90s8_saI8idf565ai9cImntwXUe2M0C30kPlwkWo5Mq4k3_LOO0SUP9Sofu-TCe-QjGORDi_lOu27QdUkGVQWDkjZXEkky-eccusHY51_ZOZkG17ILR6j87jO3SruEkxLu8sLzm2M7EP6395CeKLq3xLgZsCr1FWu1PM-L2BtlBGGPGKgP6VPXRnH_EK8ZyqTJCR-L74_FOdgcQ7VB_brEhBqiDW4enmS4wKswD83qTT5kzf08WvEkMwIYAOBQkfef6kEkzc6v7W3IWaTZ5ScMQUc7i1zfjU.IPHI5Mxj-tn6zvcwFmWLZHZjVOKsEfuykyn9d1QDWCE%26dib_tag%3Dse%26keywords%3Dringe%26qid%3D1739281517%26s%3Dapparel%26sr%3D1-1-spons%26sp_csd%3Dd2lkZ2V0TmFtZT1zcF9hdGY%26psc%3D1".to_string();
-
-        match extract_product_details(&driver, &full_link).await {
-            Ok(details) => {
-                product_details.push(details);
-            }
-            Err(e) => {
-                println!(
-                    "Couldn't extract product details for: {}, error: {}",
-                    full_link, e
-                )
-            }
-        }
-    }
+    collect_details(&driver, &infos)
+        .await
+        .expect("couldn't collect details");
 
     // Keep the browser open by looping indefinitely
     loop {
