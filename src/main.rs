@@ -82,7 +82,8 @@ LEFT JOIN
 WHERE
     b.added_timestamp > $1
 GROUP BY
-    b.id, b.name_, b.price, b.price_number, b.vendor_link, b.type_, b.descr, b.added_timestamp;
+    b.id, b.name_, b.price, b.price_number, b.vendor_link, b.type_, b.descr, b.added_timestamp
+LIMIT 50;
 "#,
     )
     .bind(after_timestamp.clone())
@@ -112,7 +113,7 @@ async fn main() -> std::io::Result<()> {
             .service(bikes)
     })
     // .bind(("127.0.0.1", 8080))?
-    .bind(("0.0.0.0", 8080))?
+    .bind(("0.0.0.0", 3000))?
     .run()
     .await
 }
