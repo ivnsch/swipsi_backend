@@ -18,6 +18,7 @@ async fn extract_links(container: &WebElement) -> Result<Vec<String>> {
                // let link = child.find_all(By::Css(".a-link-normal.s-link-style.a-text-normal")).await?;
                // println!("link elements: {:?}", link.len()); 
                if link.len() == 1 {
+                    println!("found 1 link");
                     let link = &link[0];
                     let href = link.attr("href").await?.unwrap_or_default();
                     // println!("link: {:?}", href);
@@ -74,9 +75,13 @@ async fn extract_links(container: &WebElement) -> Result<Vec<String>> {
      Ok(hrefs)
 }
 
-async fn reject_cookies(driver: &WebDriver) -> Result<()> {
-     let reject_cookies_button =  driver.find(By::Id("sp-cc-rejectall-link")).await?;
-     reject_cookies_button.click().await.expect("error rejecting cookies");
+async fn reject_cookies_if_dialog_present(driver: &WebDriver) -> Result<()> {
+     // using find all as a way to allow optional, surely there's a better way?
+     let reject_cookies_buttons =  driver.find_all(By::Id("sp-cc-rejectall-link")).await?;
+     if reject_cookies_buttons.len() == 1 {
+          let reject_cookies_button = &reject_cookies_buttons[0];
+          reject_cookies_button.click().await.expect("error rejecting cookies");
+     }
      Ok(())
 }
 
@@ -95,7 +100,7 @@ async fn hover_all_details_thumbnails(driver: &WebDriver) -> Result<()> {
 async fn extract_imgs_from_details(driver: &WebDriver) -> Result<Vec<String>> {
     
      // reject cookies - otherwise overlay on the way to hover for images
-     reject_cookies(driver).await?;
+     reject_cookies_if_dialog_present(driver).await?;
 
      // hover so all big images are added to dom
      hover_all_details_thumbnails(driver).await?;
@@ -154,7 +159,7 @@ async fn extract_links_for_all_pages(driver: &WebDriver, root_url: &str) -> Resu
      driver.goto(root_url).await?;
 
      // reject cookies - otherwise overlay might get in the way
-     reject_cookies(driver).await?;
+     reject_cookies_if_dialog_present(driver).await?;
 
      let mut next_page = 2;
      let mut all_links = vec![];
@@ -177,10 +182,11 @@ async fn extract_links_for_all_pages(driver: &WebDriver, root_url: &str) -> Resu
 #[tokio::main]
 async fn main() -> WebDriverResult<()> {
      let caps = DesiredCapabilities::chrome();
-     let driver = WebDriver::new("http://localhost:54970", caps).await?;
+     let driver = WebDriver::new("http://localhost:52711", caps).await?;
 
-     let root_url: &str = "https://www.amazon.de/s?k=ringe&i=fashion";
-     // let root_url: &str = "https://www.amazon.de/s?k=disinfectant+hand";
+     // let root_url: &str = "https://www.amazon.de/s?k=ringe&i=fashion";
+     // only a few pages
+     let root_url: &str = "https://www.amazon.de/s?k=disinfectant+hand";
 
      let links = extract_links_for_all_pages(&driver, root_url).await.expect("couldn't extract links");
      // println!("extracted links ({}) for all pages: {:?}", links.len(), links);
