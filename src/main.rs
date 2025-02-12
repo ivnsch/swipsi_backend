@@ -28,6 +28,12 @@ async fn bikes(state: Data<AppState>) -> Result<impl Responder> {
     Ok(web::Json(load_bikes(&state.db).await))
 }
 
+#[get("/items/{last_timestamp}")]
+async fn items(state: Data<AppState>, path: web::Path<i64>) -> Result<impl Responder> {
+    let last_timestamp = path.into_inner();
+    Ok(web::Json(load_items(&state.db, last_timestamp).await))
+}
+
 async fn load_bikes(pool: &Pool<Postgres>) -> Vec<Bike> {
     let res: Vec<Bike> = sqlx::query_as(
         r#"
@@ -49,6 +55,37 @@ GROUP BY
     b.id, b.name_, b.price, b.price_number, b.vendor_link, b.type_, b.descr, b.added_timestamp;
 "#,
     )
+    .fetch_all(pool)
+    .await
+    .expect("error2");
+
+    res
+}
+
+async fn load_items(pool: &Pool<Postgres>, after_timestamp: i64) -> Vec<Bike> {
+    let res: Vec<Bike> = sqlx::query_as(
+        r#"
+SELECT
+    b.id::TEXT AS id,
+    b.name_,
+    b.price,
+    b.price_number,
+    b.vendor_link,
+    b.type_,
+    b.descr,
+    b.added_timestamp,
+    COALESCE(array_agg(bp.url) FILTER (WHERE bp.url IS NOT NULL), ARRAY[]::TEXT[]) AS pictures
+FROM
+    bike b
+LEFT JOIN
+    bike_pic bp ON b.id = bp.bike_id
+WHERE
+    b.added_timestamp > $1
+GROUP BY
+    b.id, b.name_, b.price, b.price_number, b.vendor_link, b.type_, b.descr, b.added_timestamp;
+"#,
+    )
+    .bind(after_timestamp.clone())
     .fetch_all(pool)
     .await
     .expect("error2");
@@ -101,12 +138,22 @@ async fn init_pool() -> Pool<Postgres> {
 
 #[cfg(test)]
 mod test {
-    use crate::{init_pool, load_bikes};
+    use crate::{init_pool, load_bikes, load_items};
 
     #[tokio::test]
-    async fn test() {
+    async fn test_load_bikes() {
         let pool = init_pool().await;
         let bikes = load_bikes(&pool).await;
         println!("bikes: {:?}", bikes);
+    }
+
+    #[tokio::test]
+    async fn test_load_items_after_timestamp() {
+        let pool = init_pool().await;
+        let items = load_items(&pool, 0).await;
+        println!("loaded all items len: {}", items.len());
+
+        let items = load_items(&pool, 1739368334742824).await;
+        println!("loaded  items after timestamp len: {}", items.len());
     }
 }
