@@ -284,10 +284,10 @@ async fn main() -> WebDriverResult<()> {
     // println!("extracted links ({}) for all pages: {:?}", links.len(), links);
     println!("extracted links ({}) for all pages", infos.len());
 
-    // collect details
-    collect_details(&driver, &infos)
-        .await
-        .expect("couldn't collect details");
+    // // collect details
+    // collect_details(&driver, &infos)
+    //     .await
+    //     .expect("couldn't collect details");
 
     // Keep the browser open by looping indefinitely
     loop {
