@@ -1,8 +1,8 @@
--- psql -U ivanschuetz -d bikematch -f ./init_db.sql
+-- psql -p 5433 -U ivanschuetz -d bikematch -f ./init_db.sql
 
 -- reset everything
-DROP TABLE bike_pic;
-DROP TABLE bike;
+DROP TABLE if exists bike_pic;
+DROP TABLE if exists bike;
 
 -- create tables
 

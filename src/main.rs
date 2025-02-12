@@ -97,7 +97,7 @@ async fn test_query(pool: &Pool<Postgres>) {
 async fn init_pool() -> Pool<Postgres> {
     PgPoolOptions::new()
         .max_connections(5)
-        .connect("postgres://ivanschuetz:password@localhost/bikematch")
+        .connect("postgres://tester:testpw@localhost:5433/bikematch")
         .await
         .expect("error1")
 }
@@ -110,6 +110,6 @@ mod test {
     async fn test() {
         let pool = init_pool().await;
         let bikes = load_bikes(&pool).await;
-        println!("bikes: {:?}", bikes); 
-    } 
+        println!("bikes: {:?}", bikes);
+    }
 }
