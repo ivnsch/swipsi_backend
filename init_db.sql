@@ -9,11 +9,9 @@ DROP TABLE if exists bike;
 CREATE TABLE IF NOT EXISTS bike (
     id SERIAL PRIMARY KEY,
     name_ VARCHAR(255),
-    brand VARCHAR(255),
     price VARCHAR(255),
     price_number FLOAT4,
     vendor_link VARCHAR(255),
-    electric BOOL,
     type_ VARCHAR(255),
     -- todo consider varchar with max limit
     descr TEXT,

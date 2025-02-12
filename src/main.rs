@@ -14,13 +14,10 @@ struct Bike {
     id: String,
     #[serde(rename = "name")]
     name_: String,
-    brand: String,
     price: String,
     price_number: f32,
     pictures: Vec<String>,
     vendor_link: String,
-    electric: bool,
-    #[serde(rename = "type")]
     type_: String,
     descr: String,
     added_timestamp: i64,
@@ -37,11 +34,9 @@ async fn load_bikes(pool: &Pool<Postgres>) -> Vec<Bike> {
 SELECT
     b.id::TEXT AS id,
     b.name_,
-    b.brand,
     b.price,
     b.price_number,
     b.vendor_link,
-    b.electric,
     b.type_,
     b.descr,
     b.added_timestamp,
@@ -51,7 +46,7 @@ FROM
 LEFT JOIN
     bike_pic bp ON b.id = bp.bike_id
 GROUP BY
-    b.id, b.name_, b.brand, b.price, b.price_number, b.vendor_link, b.electric, b.type_, b.descr, b.added_timestamp;
+    b.id, b.name_, b.price, b.price_number, b.vendor_link, b.type_, b.descr, b.added_timestamp;
 "#,
     )
     .fetch_all(pool)
