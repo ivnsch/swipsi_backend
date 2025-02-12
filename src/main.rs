@@ -1,6 +1,5 @@
-use std::{sync::Arc, thread::sleep, time::Duration};
 use anyhow::{anyhow, Result};
-use thirtyfour::{action_chain::ActionChain, common::command::Actions, prelude::*, session::handle::SessionHandle};
+use thirtyfour::prelude::*;
 
 async fn extract_link(container: &WebElement) -> Result<String> {
      let link_wrappers = container.find_all(By::ClassName("s-title-instructions-style")).await?;
