@@ -27,60 +27,70 @@ async fn extract_link(container: &WebElement) -> Result<String> {
     }
 }
 
-async fn extract_infos(container: &WebElement) -> Result<Vec<String>> {
+async fn extract_name(container: &WebElement) -> Result<String> {
+    let name = container
+        .find_all(By::Css(".a-size-base-plus.a-spacing-none"))
+        .await?;
+
+    if name.len() == 1 {
+        let name = &name[0];
+        // println!("{:?}", name);
+
+        let spans = name.find_all(By::Tag("span")).await?;
+        // println!("spans len: {:?}", spans);
+        if spans.len() == 1 {
+            let span = &spans[0];
+            let span_text: String = span.text().await?;
+            return Ok(span_text);
+            // println!("text: {:?}", span_text);
+        } else {
+            return Err(anyhow!(
+                "multiple or no spans for name span: {}",
+                spans.len()
+            ));
+        }
+    } else {
+        return Err(anyhow!("multiple or no spans for name: {}", name.len()));
+    }
+}
+
+struct ProductInfo {
+    name: String,
+    details_link: String,
+}
+
+async fn extract_product_info(container: &WebElement) -> Result<ProductInfo> {
+    match extract_link(container).await {
+        Ok(link) => match extract_name(container).await {
+            Ok(name) => {
+                return Ok(ProductInfo {
+                    name,
+                    details_link: link,
+                })
+            }
+            Err(e) => return Err(anyhow!("error extracting name: {}", e)),
+        },
+        Err(e) => return Err(anyhow!("error extracting link: {}", e)),
+    }
+}
+
+async fn extract_infos(container: &WebElement) -> Result<Vec<ProductInfo>> {
     let children = container.find_all(By::ClassName("s-result-item")).await?;
     // println!("children: {:?}", children.len());
 
-    let mut hrefs = vec![];
+    let mut infos = vec![];
     for child in children {
-        match extract_link(container).await {
-            Ok(link) => {
-                hrefs.push(link);
+        match extract_product_info(&child).await {
+            Ok(info) => {
+                infos.push(info);
             }
             Err(e) => println!("error extracting link: {}", e),
         }
-
-        // get name (not used right now)..
-
-        let name = child
-            .find_all(By::Css(".a-size-base-plus.a-spacing-none"))
-            .await?;
-        // let name = child.find_all(By::ClassName("a-size-base-plus")).await?;
-        // println!("name elements: {:?}", name.len());
-
-        // Get the text from the span element
-
-        if name.len() == 1 {
-            let name = &name[0];
-            // println!("{:?}", name);
-
-            let spans = name.find_all(By::Tag("span")).await?;
-            // println!("spans len: {:?}", spans);
-            if spans.len() == 1 {
-                let span = &spans[0];
-                let span_text: String = span.text().await?;
-                // println!("text: {:?}", span_text);
-            }
-        }
     }
 
-    // // Find element from element.
-    // let elem_text = elem_form.find(By::Id("searchInput")).await?;
+    println!("finish a page! extracted infos: {:?}", infos.len());
 
-    // // Type in the search terms.
-    // elem_text.send_keys("selenium").await?;
-
-    // // Click the search button.
-    // let elem_button = elem_form.find(By::Css("button[type='submit']")).await?;
-    // elem_button.click().await?;
-
-    // // Look for header to implicitly wait for the page to load.
-    // driver.find(By::ClassName("firstHeading")).await?;
-    // assert_eq!(driver.title().await?, "Selenium - Wikipedia");
-
-    println!("finish a page! extracted links: {:?}", hrefs.len());
-
-    Ok(hrefs)
+    Ok(infos)
 }
 
 async fn reject_cookies_if_dialog_present(driver: &WebDriver) -> Result<()> {
@@ -175,7 +185,10 @@ async fn is_in_last_page(driver: &WebDriver) -> Result<bool> {
     Ok(!next_page_disabled.is_empty())
 }
 
-async fn extract_links_for_all_pages(driver: &WebDriver, root_url: &str) -> Result<Vec<String>> {
+async fn extract_infos_for_all_pages(
+    driver: &WebDriver,
+    root_url: &str,
+) -> Result<Vec<ProductInfo>> {
     driver.goto(root_url).await?;
 
     // reject cookies - otherwise overlay might get in the way
@@ -213,16 +226,16 @@ async fn main() -> WebDriverResult<()> {
     // only a few pages
     let root_url: &str = "https://www.amazon.de/s?k=disinfectant+hand";
 
-    let links = extract_links_for_all_pages(&driver, root_url)
+    let infos = extract_infos_for_all_pages(&driver, root_url)
         .await
         .expect("couldn't extract links");
     // println!("extracted links ({}) for all pages: {:?}", links.len(), links);
-    println!("extracted links ({}) for all pages", links.len());
+    println!("extracted links ({}) for all pages", infos.len());
 
     // collect details
     let mut product_details: Vec<ProductDetails> = vec![];
-    for link in links {
-        let full_link = format!("https://amazon.de{}", link);
+    for info in infos {
+        let full_link = format!("https://amazon.de{}", info.details_link);
         // example link to test just one page (comment loop)
         // let full_link = "https://amazon.de/sspa/click?ie=UTF8&spc=MTo1NzU5Nzg0NjQ1NTU0NDQ3OjE3MzkyODE1MTc6c3BfYXRmOjMwMDM0NTQ5MTgzMDkzMjo6MDo6&url=%2Fs-Oliver-Damen-Ring-Edelstahl-Swarovski-Kristalle-Breite%2Fdp%2FB07FD729LJ%2Fref%3Dsr_1_1_sspa%3Fdib%3DeyJ2IjoiMSJ9.bMcM1L4llnp90s8_saI8idf565ai9cImntwXUe2M0C30kPlwkWo5Mq4k3_LOO0SUP9Sofu-TCe-QjGORDi_lOu27QdUkGVQWDkjZXEkky-eccusHY51_ZOZkG17ILR6j87jO3SruEkxLu8sLzm2M7EP6395CeKLq3xLgZsCr1FWu1PM-L2BtlBGGPGKgP6VPXRnH_EK8ZyqTJCR-L74_FOdgcQ7VB_brEhBqiDW4enmS4wKswD83qTT5kzf08WvEkMwIYAOBQkfef6kEkzc6v7W3IWaTZ5ScMQUc7i1zfjU.IPHI5Mxj-tn6zvcwFmWLZHZjVOKsEfuykyn9d1QDWCE%26dib_tag%3Dse%26keywords%3Dringe%26qid%3D1739281517%26s%3Dapparel%26sr%3D1-1-spons%26sp_csd%3Dd2lkZ2V0TmFtZT1zcF9hdGY%26psc%3D1".to_string();
 
