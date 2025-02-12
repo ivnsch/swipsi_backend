@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Result};
+use csv::Writer;
 use thirtyfour::prelude::*;
 
 async fn extract_link(container: &WebElement) -> Result<String> {
@@ -269,6 +270,21 @@ async fn collect_details(driver: &WebDriver, infos: &[ProductInfo]) -> Result<Ve
     Ok(product_details)
 }
 
+fn to_csv(infos: &[ProductInfo]) -> Result<()> {
+    let mut wtr = Writer::from_path("product_infos.csv")?;
+    for info in infos {
+        wtr.write_record(&[
+            info.name.clone(),
+            info.price.clone(),
+            info.img.clone(),
+            info.details_link.clone(),
+        ])?;
+    }
+    wtr.flush()?;
+
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> WebDriverResult<()> {
     let caps = DesiredCapabilities::chrome();
@@ -282,7 +298,10 @@ async fn main() -> WebDriverResult<()> {
         .await
         .expect("couldn't extract links");
     // println!("extracted links ({}) for all pages: {:?}", links.len(), links);
+
     println!("extracted links ({}) for all pages", infos.len());
+
+    to_csv(&infos).expect("couldn't write to csv");
 
     // // collect details
     // collect_details(&driver, &infos)
