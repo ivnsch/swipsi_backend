@@ -1,37 +1,40 @@
 use std::{sync::Arc, thread::sleep, time::Duration};
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use thirtyfour::{action_chain::ActionChain, common::command::Actions, prelude::*, session::handle::SessionHandle};
 
-async fn extract_links(container: &WebElement) -> Result<Vec<String>> {
+async fn extract_link(container: &WebElement) -> Result<String> {
+     let link_wrappers = container.find_all(By::ClassName("s-title-instructions-style")).await?;
+     if link_wrappers.len() == 1 {
+          let link_wrapper = &link_wrappers[0];
+          let link = link_wrapper.find_all(By::Tag("a")).await?;
+          // let link = child.find_all(By::Css(".a-link-normal.s-link-style.a-text-normal")).await?;
+          // println!("link elements: {:?}", link.len()); 
+          if link.len() == 1 {
+               println!("found 1 link");
+               let link = &link[0];
+               let href = link.attr("href").await?.unwrap_or_default();
+               // println!("link: {:?}", href);
+               return Ok(href);
+          } else {
+               return Err(anyhow!("no links or too many found: {}", link.len()))
+          }
+     } else {
+          return Err(anyhow!("no link wrappers or too many found: {}", link_wrappers.len()))
+     }
+}
+
+async fn extract_infos(container: &WebElement) -> Result<Vec<String>> {
      let children = container.find_all(By::ClassName("s-result-item")).await?;
      // println!("children: {:?}", children.len());
 
      let mut hrefs = vec![];
      for child in children {
-
-          // get link..
-
-          let link_wrappers = child.find_all(By::ClassName("s-title-instructions-style")).await?;
-          if link_wrappers.len() == 1 {
-               let link_wrapper = &link_wrappers[0];
-               let link = link_wrapper.find_all(By::Tag("a")).await?;
-               // let link = child.find_all(By::Css(".a-link-normal.s-link-style.a-text-normal")).await?;
-               // println!("link elements: {:?}", link.len()); 
-               if link.len() == 1 {
-                    println!("found 1 link");
-                    let link = &link[0];
-                    let href = link.attr("href").await?.unwrap_or_default();
-                    // println!("link: {:?}", href);
-                    hrefs.push(href);
-               } else {
-                    println!("no links or too many found: {}", link.len());
-               }
-          } else {
-               println!("no link wrappers or too many found: {}", link_wrappers.len());
+          match extract_link(container).await {
+            Ok(link) => {
+               hrefs.push(link);
+            },
+            Err(e) => println!("error extracting link: {}", e),
           }
-
-
-
 
       
           // get name (not used right now)..
@@ -166,7 +169,7 @@ async fn extract_links_for_all_pages(driver: &WebDriver, root_url: &str) -> Resu
 
      while !is_in_last_page(&driver).await.expect("error checking is last page")  {
           let container = driver.find(By::ClassName("s-main-slot")).await?;
-          let page_links = extract_links(&container).await.expect("...");
+          let page_links = extract_infos(&container).await.expect("...");
           all_links.extend(page_links);
 
           let next_page_par = format!("&page={}", next_page);
