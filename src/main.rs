@@ -322,6 +322,7 @@ async fn extract_infos_for_all_pages(
     Ok(all_links)
 }
 
+#[allow(unused)]
 async fn collect_details(driver: &WebDriver, infos: &[ProductInfo]) -> Result<Vec<ProductDetails>> {
     let mut product_details: Vec<ProductDetails> = vec![];
     for info in infos {
@@ -358,36 +359,41 @@ fn to_csv(infos: &[ProductInfo]) -> Result<()> {
     Ok(())
 }
 
-#[tokio::main]
-async fn main() -> WebDriverResult<()> {
-    let caps = DesiredCapabilities::chrome();
-    let driver = WebDriver::new("http://localhost:52711", caps).await?;
+#[cfg(test)]
+mod test {
+    use crate::{extract_infos_for_all_pages, to_csv};
+    use anyhow::Result;
+    use thirtyfour::{DesiredCapabilities, WebDriver};
 
-    // let root_url: &str = "https://www.amazon.de/s?k=ringe&i=fashion";
-    // only a few pages
-    let root_url: &str = "https://www.amazon.de/s?k=disinfectant+hand";
+    #[tokio::test]
+    async fn scrap() -> Result<()> {
+        let caps = DesiredCapabilities::chrome();
+        let driver = WebDriver::new("http://localhost:52711", caps).await?;
 
-    let infos = extract_infos_for_all_pages(&driver, root_url)
-        .await
-        .expect("couldn't extract links");
-    // println!("extracted links ({}) for all pages: {:?}", links.len(), links);
+        // let root_url: &str = "https://www.amazon.de/s?k=ringe&i=fashion";
+        // only a few pages
+        let root_url: &str = "https://www.amazon.de/s?k=disinfectant+hand";
 
-    println!("extracted links ({}) for all pages", infos.len());
+        let infos = extract_infos_for_all_pages(&driver, root_url).await?;
+        // println!("extracted links ({}) for all pages: {:?}", links.len(), links);
 
-    to_csv(&infos).expect("couldn't write to csv");
+        println!("extracted links ({}) for all pages", infos.len());
 
-    // // collect details
-    // collect_details(&driver, &infos)
-    //     .await
-    //     .expect("couldn't collect details");
+        to_csv(&infos)?;
 
-    // Keep the browser open by looping indefinitely
-    loop {
-        tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+        // // collect details
+        // collect_details(&driver, &infos)
+        //     .await?;
+
+        // Keep the browser open by looping indefinitely
+        // enable this if needed to inspect something after finish
+        // loop {
+        //     tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+        // }
+
+        // Always explicitly close the browser.
+        // driver.quit().await?;
+
+        Ok(())
     }
-
-    // Always explicitly close the browser.
-    // driver.quit().await?;
-
-    Ok(())
 }
