@@ -149,7 +149,7 @@ async fn extract_price(container: &WebElement) -> Result<String> {
     ))
 }
 
-struct ProductInfo {
+pub struct ProductInfo {
     name: String,
     details_link: String,
     price: String,
@@ -290,7 +290,7 @@ async fn is_in_last_page(driver: &WebDriver) -> Result<bool> {
     Ok(!next_page_disabled.is_empty())
 }
 
-async fn extract_infos_for_all_pages(
+pub async fn extract_infos_for_all_pages(
     driver: &WebDriver,
     root_url: &str,
 ) -> Result<Vec<ProductInfo>> {
@@ -361,9 +361,10 @@ fn to_csv(infos: &[ProductInfo]) -> Result<()> {
 
 #[cfg(test)]
 mod test {
-    use crate::{extract_infos_for_all_pages, to_csv};
     use anyhow::Result;
     use thirtyfour::{DesiredCapabilities, WebDriver};
+
+    use crate::scrapper::{extract_infos_for_all_pages, to_csv};
 
     #[tokio::test]
     async fn scrap() -> Result<()> {

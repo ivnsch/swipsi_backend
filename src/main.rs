@@ -1,3 +1,5 @@
+pub mod scrapper;
+
 use actix_web::{
     get,
     web::{self, Data},
