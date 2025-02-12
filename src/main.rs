@@ -1,6 +1,7 @@
 use anyhow::{anyhow, Result};
 use csv::Writer;
 use thirtyfour::prelude::*;
+use url::Url;
 
 async fn extract_link(container: &WebElement) -> Result<String> {
     let link_wrappers = container
@@ -15,8 +16,10 @@ async fn extract_link(container: &WebElement) -> Result<String> {
             println!("found 1 link");
             let link = &link[0];
             let href = link.attr("href").await?.unwrap_or_default();
+
+            let processed_href = process_infos_link(href)?;
             // println!("link: {:?}", href);
-            return Ok(href);
+            return Ok(processed_href);
         } else {
             return Err(anyhow!("no links or too many found: {}", link.len()));
         }
@@ -26,6 +29,35 @@ async fn extract_link(container: &WebElement) -> Result<String> {
             link_wrappers.len()
         ));
     }
+}
+
+fn process_infos_link(link: String) -> Result<String> {
+    let base = "https://amazon.de";
+    let full_link = format!("{}{}", base, link);
+    let url = Url::parse(&full_link)?;
+
+    let segments: Vec<&str> = url
+        .path_segments()
+        .map(|c| c.collect())
+        .unwrap_or_else(Vec::new);
+
+    // extract dp segment (actual identification of product)
+    let dp_path = segments
+        .iter()
+        .skip_while(|&&segment| segment != "dp")
+        .take(2)
+        .cloned()
+        .collect::<Vec<&str>>()
+        .join("/");
+
+    // reconstruct minimal url
+    let mut new_url = Url::parse("https://www.amazon.de").expect("Failed to parse base URL");
+    new_url.set_path(&format!("/{}", dp_path));
+    new_url.set_query(None); // remove all query parameters
+
+    new_url.query_pairs_mut().append_pair("tag", "my-tag");
+
+    Ok(new_url.to_string())
 }
 
 async fn extract_name(container: &WebElement) -> Result<String> {
@@ -255,18 +287,17 @@ async fn extract_infos_for_all_pages(
 async fn collect_details(driver: &WebDriver, infos: &[ProductInfo]) -> Result<Vec<ProductDetails>> {
     let mut product_details: Vec<ProductDetails> = vec![];
     for info in infos {
-        let full_link = format!("https://amazon.de{}", info.details_link);
         // example link to test just one page (comment loop)
-        // let full_link = "https://amazon.de/sspa/click?ie=UTF8&spc=MTo1NzU5Nzg0NjQ1NTU0NDQ3OjE3MzkyODE1MTc6c3BfYXRmOjMwMDM0NTQ5MTgzMDkzMjo6MDo6&url=%2Fs-Oliver-Damen-Ring-Edelstahl-Swarovski-Kristalle-Breite%2Fdp%2FB07FD729LJ%2Fref%3Dsr_1_1_sspa%3Fdib%3DeyJ2IjoiMSJ9.bMcM1L4llnp90s8_saI8idf565ai9cImntwXUe2M0C30kPlwkWo5Mq4k3_LOO0SUP9Sofu-TCe-QjGORDi_lOu27QdUkGVQWDkjZXEkky-eccusHY51_ZOZkG17ILR6j87jO3SruEkxLu8sLzm2M7EP6395CeKLq3xLgZsCr1FWu1PM-L2BtlBGGPGKgP6VPXRnH_EK8ZyqTJCR-L74_FOdgcQ7VB_brEhBqiDW4enmS4wKswD83qTT5kzf08WvEkMwIYAOBQkfef6kEkzc6v7W3IWaTZ5ScMQUc7i1zfjU.IPHI5Mxj-tn6zvcwFmWLZHZjVOKsEfuykyn9d1QDWCE%26dib_tag%3Dse%26keywords%3Dringe%26qid%3D1739281517%26s%3Dapparel%26sr%3D1-1-spons%26sp_csd%3Dd2lkZ2V0TmFtZT1zcF9hdGY%26psc%3D1".to_string();
+        // let link = "https://amazon.de/sspa/click?ie=UTF8&spc=MTo1NzU5Nzg0NjQ1NTU0NDQ3OjE3MzkyODE1MTc6c3BfYXRmOjMwMDM0NTQ5MTgzMDkzMjo6MDo6&url=%2Fs-Oliver-Damen-Ring-Edelstahl-Swarovski-Kristalle-Breite%2Fdp%2FB07FD729LJ%2Fref%3Dsr_1_1_sspa%3Fdib%3DeyJ2IjoiMSJ9.bMcM1L4llnp90s8_saI8idf565ai9cImntwXUe2M0C30kPlwkWo5Mq4k3_LOO0SUP9Sofu-TCe-QjGORDi_lOu27QdUkGVQWDkjZXEkky-eccusHY51_ZOZkG17ILR6j87jO3SruEkxLu8sLzm2M7EP6395CeKLq3xLgZsCr1FWu1PM-L2BtlBGGPGKgP6VPXRnH_EK8ZyqTJCR-L74_FOdgcQ7VB_brEhBqiDW4enmS4wKswD83qTT5kzf08WvEkMwIYAOBQkfef6kEkzc6v7W3IWaTZ5ScMQUc7i1zfjU.IPHI5Mxj-tn6zvcwFmWLZHZjVOKsEfuykyn9d1QDWCE%26dib_tag%3Dse%26keywords%3Dringe%26qid%3D1739281517%26s%3Dapparel%26sr%3D1-1-spons%26sp_csd%3Dd2lkZ2V0TmFtZT1zcF9hdGY%26psc%3D1".to_string();
 
-        match extract_product_details(driver, &full_link).await {
+        match extract_product_details(driver, &info.details_link).await {
             Ok(details) => {
                 product_details.push(details);
             }
             Err(e) => {
                 println!(
                     "Couldn't extract product details for: {}, error: {}",
-                    full_link, e
+                    info.details_link, e
                 )
             }
         }
