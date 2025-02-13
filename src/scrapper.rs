@@ -486,7 +486,7 @@ mod test {
 
         // to_csv(&infos)?;
         let pool = init_pool().await;
-        save_products_to_db(&pool, &infos, "figurine", "uni").await?;
+        save_products_to_db(&pool, &infos, "necklace", "uni").await?;
 
         // // collect details
         // collect_details(&driver, &infos)
