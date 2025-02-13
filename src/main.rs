@@ -7,6 +7,7 @@ use actix_web::{
     web::{self, Data},
     App, HttpServer, Responder, Result,
 };
+use log::info;
 use serde::{Deserialize, Serialize};
 use sqlx::{postgres::PgPoolOptions, prelude::FromRow, Pool, Postgres};
 
@@ -31,6 +32,7 @@ struct Filters {
     price: Vec<u32>,
 }
 
+#[derive(Debug)]
 struct DbFilters {
     type_: Vec<String>,
     price_min: f32,
@@ -111,6 +113,8 @@ fn to_db_filters(filters: &Filters) -> DbFilters {
 
 // TODO redunancy filters price-filters
 async fn load_items(pool: &Pool<Postgres>, after_timestamp: i64, filters: &DbFilters) -> Vec<Bike> {
+    info!("filters: {:?}", filters);
+
     let res: Vec<Bike> = sqlx::query_as(
         r#"
 SELECT

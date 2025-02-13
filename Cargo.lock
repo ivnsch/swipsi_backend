@@ -1482,6 +1482,7 @@ dependencies = [
  "chrono",
  "csv",
  "env_logger",
+ "log",
  "serde",
  "sqlx",
  "thirtyfour",
