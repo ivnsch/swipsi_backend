@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS bike (
     name_ VARCHAR(255),
     price VARCHAR(255),
     price_number FLOAT4,
+    price_currency VARCHAR(255),
     vendor_link VARCHAR(255),
     type_ VARCHAR(255),
     -- todo consider varchar with max limit

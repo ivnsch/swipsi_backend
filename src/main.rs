@@ -19,6 +19,7 @@ struct Bike {
     name_: String,
     price: String,
     price_number: f32,
+    price_currency: String,
     pictures: Vec<String>,
     vendor_link: String,
     type_: String,
@@ -122,6 +123,7 @@ SELECT
     b.name_,
     b.price,
     b.price_number,
+    b.price_currency,
     b.vendor_link,
     b.type_,
     b.descr,
@@ -134,7 +136,7 @@ LEFT JOIN
 WHERE
     b.added_timestamp > $1 AND b.type_ = ANY($2) AND b.price_number > $3 AND b.price_number < $4
 GROUP BY
-    b.id, b.name_, b.price, b.price_number, b.vendor_link, b.type_, b.descr, b.added_timestamp
+    b.id, b.name_, b.price, b.price_number, b.price_currency, b.vendor_link, b.type_, b.descr, b.added_timestamp
 LIMIT 50;
 "#,
     )

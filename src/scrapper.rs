@@ -133,12 +133,21 @@ fn extract_highest_res_img(src_set: &str) -> Result<String> {
     }
 }
 
-async fn extract_price(container: &WebElement) -> Result<(String, f32)> {
+#[derive(Debug)]
+struct Price {
+    str: String,
+    number: f32,
+    currency: String,
+}
+
+async fn extract_price(container: &WebElement) -> Result<Price> {
     let whole_part = container.find(By::ClassName("a-price-whole")).await?;
     let fraction_part = container.find(By::ClassName("a-price-fraction")).await?;
     let symbol_part = container.find(By::ClassName("a-price-symbol")).await?;
 
-    if symbol_part.text().await? != "€" {
+    let symbol_text = symbol_part.text().await?;
+    let symbol = symbol_text.trim();
+    if symbol != "€" {
         // we assume all prices are always euros, but a double check just in case
         // TODO we should return an error here
         println!("unexpected currency symbol: {}", symbol_part);
@@ -146,20 +155,23 @@ async fn extract_price(container: &WebElement) -> Result<(String, f32)> {
 
     let price_str = format!(
         "{}.{}",
-        whole_part.text().await?,
-        fraction_part.text().await?
+        whole_part.text().await?.trim(),
+        fraction_part.text().await?.trim()
     );
 
     let price_float = price_str.parse()?;
 
-    Ok((price_str, price_float))
+    Ok(Price {
+        str: price_str,
+        number: price_float,
+        currency: symbol.to_string(),
+    })
 }
 
 pub struct ProductInfo {
     name: String,
     details_link: String,
-    price: String,
-    price_number: f32,
+    price: Price,
     img: String,
 }
 
@@ -172,8 +184,7 @@ async fn extract_product_info(container: &WebElement) -> Result<ProductInfo> {
                         return Ok(ProductInfo {
                             name,
                             details_link: link,
-                            price: price.0,
-                            price_number: price.1,
+                            price,
                             img,
                         })
                     }
@@ -357,7 +368,8 @@ pub fn to_csv(infos: &[ProductInfo]) -> Result<()> {
     for info in infos {
         wtr.write_record(&[
             info.name.clone(),
-            info.price.clone(),
+            info.price.str.clone(),
+            info.price.currency.clone(),
             info.img.clone(),
             info.details_link.clone(),
         ])?;
@@ -382,14 +394,15 @@ pub async fn save_products_to_db(
 async fn save_product_to_db(pool: &Pool<Postgres>, infos: &ProductInfo, type_: &str) -> Result<()> {
     let row: (i32,) = sqlx::query_as(
         r#"
-INSERT INTO bike (name_, price, price_number, vendor_link, type_, added_timestamp, descr)
-VALUES ($1, $2, $3, $4, $5, $6, $7) 
+INSERT INTO bike (name_, price, price_number, price_currency, vendor_link, type_, added_timestamp, descr)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
 RETURNING id;
 "#,
     )
     .bind(infos.name.clone())
-    .bind(infos.price.clone())
-    .bind(infos.price_number)
+    .bind(infos.price.str.clone())
+    .bind(infos.price.number)
+    .bind(infos.price.currency.clone())
     .bind(infos.details_link.clone())
     .bind(type_)
     .bind(Utc::now().timestamp_micros())
@@ -421,7 +434,8 @@ mod test {
     use crate::{
         init_pool,
         scrapper::{
-            extract_infos_for_all_pages, save_product_to_db, save_products_to_db, ProductInfo,
+            extract_infos_for_all_pages, save_product_to_db, save_products_to_db, Price,
+            ProductInfo,
         },
     };
 
@@ -430,8 +444,11 @@ mod test {
         let info = ProductInfo {
             name: "mock product 1".to_string(),
             details_link: "https://foo.bar/aaa".to_string(),
-            price: "123.12".to_string(),
-            price_number: 123.12,
+            price: Price {
+                str: "123.12".to_string(),
+                number: 123.12,
+                currency: "€".to_string(),
+            },
             img: "https://doesntexist.com/foo.png".to_string(),
         };
 
@@ -446,15 +463,21 @@ mod test {
         let info1 = ProductInfo {
             name: "mock product 1".to_string(),
             details_link: "https://foo.bar/aaa".to_string(),
-            price: "123.12".to_string(),
-            price_number: 123.12,
+            price: Price {
+                str: "123.12".to_string(),
+                number: 123.12,
+                currency: "€".to_string(),
+            },
             img: "https://doesntexist.com/foo.png".to_string(),
         };
         let info2 = ProductInfo {
             name: "mock product 2".to_string(),
             details_link: "https://foo.bar/bbb".to_string(),
-            price: "223.12".to_string(),
-            price_number: 223.12,
+            price: Price {
+                str: "123.12".to_string(),
+                number: 123.12,
+                currency: "€".to_string(),
+            },
             img: "https://doesntexist.com/foo2.png".to_string(),
         };
         let pool = init_pool().await;
