@@ -20,6 +20,7 @@ struct Bike {
     pictures: Vec<String>,
     vendor_link: String,
     type_: String,
+    gender: String,
     descr: String,
     added_timestamp: i64,
 }
