@@ -30,6 +30,7 @@ struct Bike {
 struct Filters {
     type_: Vec<String>,
     gender: Vec<String>,
+    price: Vec<u32>,
 }
 
 #[post("/items/{last_timestamp}")]
@@ -44,7 +45,38 @@ async fn items(
     ))
 }
 
+fn to_min_max(price_filter: &[u32]) -> PriceBounds {
+    let mut min = f32::MAX;
+    let mut max: f32 = 0.;
+
+    if price_filter.contains(&1) {
+        min = min.min(0.);
+        max = max.max(19.99);
+    }
+    if price_filter.contains(&2) {
+        min = min.min(20.);
+        max = max.max(49.99);
+    }
+    if price_filter.contains(&3) {
+        min = min.min(50.);
+        max = max.max(99.99);
+    }
+    if price_filter.contains(&4) {
+        min = min.min(100.);
+        max = max.max(1_000_000.);
+    }
+    PriceBounds { min, max }
+}
+
+struct PriceBounds {
+    min: f32,
+    max: f32,
+}
+
+// TODO redunancy filters price-filters
 async fn load_items(pool: &Pool<Postgres>, after_timestamp: i64, filters: &Filters) -> Vec<Bike> {
+    let price_bounds = to_min_max(&filters.price);
+
     let res: Vec<Bike> = sqlx::query_as(
         r#"
 SELECT
@@ -63,7 +95,7 @@ FROM
 LEFT JOIN
     bike_pic bp ON b.id = bp.bike_id
 WHERE
-    b.added_timestamp > $1 AND b.type_ = ANY($2) AND b.gender = ANY($3)
+    b.added_timestamp > $1 AND b.type_ = ANY($2) AND b.gender = ANY($3) AND b.price_number > $4 AND b.price_number < $5
 GROUP BY
     b.id, b.name_, b.price, b.price_number, b.vendor_link, b.type_, b.gender, b.descr, b.added_timestamp
 LIMIT 50;
@@ -72,6 +104,8 @@ LIMIT 50;
     .bind(after_timestamp.clone())
     .bind(filters.type_.clone())
     .bind(filters.gender.clone())
+    .bind(price_bounds.min)
+    .bind(price_bounds.max)
     .fetch_all(pool)
     .await
     .expect("error2");
@@ -136,6 +170,7 @@ mod test {
         let filters = Filters {
             type_: vec!["necklace".to_string(), "bracelet".to_string()],
             gender: vec!["women".to_string(), "men".to_string(), "uni".to_string()],
+            price: vec![1, 2, 3, 4],
         };
 
         let items = load_items(&pool, 0, &filters).await;
