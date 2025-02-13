@@ -73,6 +73,7 @@ SELECT
     b.price_number,
     b.vendor_link,
     b.type_,
+    b.gender,
     b.descr,
     b.added_timestamp,
     COALESCE(array_agg(bp.url) FILTER (WHERE bp.url IS NOT NULL), ARRAY[]::TEXT[]) AS pictures
@@ -83,7 +84,7 @@ LEFT JOIN
 WHERE
     b.added_timestamp > $1
 GROUP BY
-    b.id, b.name_, b.price, b.price_number, b.vendor_link, b.type_, b.descr, b.added_timestamp
+    b.id, b.name_, b.price, b.price_number, b.vendor_link, b.type_, b.gender, b.descr, b.added_timestamp
 LIMIT 50;
 "#,
     )
