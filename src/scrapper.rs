@@ -460,6 +460,37 @@ mod test {
         let pool = init_pool().await;
         save_products_to_db(&pool, &vec![info1, info2], "mock").await?;
 
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn scrap_all() -> Result<()> {
+        let caps = DesiredCapabilities::chrome();
+        let driver = WebDriver::new("http://localhost:52711", caps).await?;
+
+        let necklace_url = "https://www.amazon.de/s?k=necklace&i=fashion";
+        let armband_url = "https://www.amazon.de/s?k=armband&i=fashion";
+        let ring_url = "https://www.amazon.de/s?k=ring&i=fashion";
+        let earring_url = "https://www.amazon.de/s?k=earring&i=fashion";
+
+        let necklaces = extract_infos_for_all_pages(&driver, necklace_url).await?;
+        let armbands = extract_infos_for_all_pages(&driver, armband_url).await?;
+        let rings = extract_infos_for_all_pages(&driver, ring_url).await?;
+        let earrings = extract_infos_for_all_pages(&driver, earring_url).await?;
+
+        println!("extracted links for all pages");
+        println!("necklaces: {}", necklaces.len());
+        println!("armbands: {}", armbands.len());
+        println!("rings: {}", rings.len());
+        println!("earrings: {}", earrings.len());
+
+        let pool = init_pool().await;
+        save_products_to_db(&pool, &necklaces, "necklace").await?;
+        save_products_to_db(&pool, &armbands, "armband").await?;
+        save_products_to_db(&pool, &rings, "ring").await?;
+        save_products_to_db(&pool, &earrings, "earring").await?;
+
+        println!("finished saving products to db");
 
         Ok(())
     }
