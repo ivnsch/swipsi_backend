@@ -3,10 +3,11 @@ pub mod scrapper;
 use actix_web::{
     get,
     middleware::Logger,
+    post,
     web::{self, Data},
     App, HttpServer, Responder, Result,
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sqlx::{postgres::PgPoolOptions, prelude::FromRow, Pool, Postgres};
 
 #[derive(Debug, FromRow, Serialize)]
@@ -25,13 +26,25 @@ struct Bike {
     added_timestamp: i64,
 }
 
-#[get("/items/{last_timestamp}")]
-async fn items(state: Data<AppState>, path: web::Path<i64>) -> Result<impl Responder> {
-    let last_timestamp = path.into_inner();
-    Ok(web::Json(load_items(&state.db, last_timestamp).await))
+#[derive(Debug, Deserialize)]
+struct Filters {
+    type_: Vec<String>,
+    gender: Vec<String>,
 }
 
-async fn load_items(pool: &Pool<Postgres>, after_timestamp: i64) -> Vec<Bike> {
+#[post("/items/{last_timestamp}")]
+async fn items(
+    state: Data<AppState>,
+    path: web::Path<i64>,
+    filters: web::Json<Filters>,
+) -> Result<impl Responder> {
+    let last_timestamp = path.into_inner();
+    Ok(web::Json(
+        load_items(&state.db, last_timestamp, &filters).await,
+    ))
+}
+
+async fn load_items(pool: &Pool<Postgres>, after_timestamp: i64, filters: &Filters) -> Vec<Bike> {
     let res: Vec<Bike> = sqlx::query_as(
         r#"
 SELECT
@@ -50,13 +63,15 @@ FROM
 LEFT JOIN
     bike_pic bp ON b.id = bp.bike_id
 WHERE
-    b.added_timestamp > $1
+    b.added_timestamp > $1 AND b.type_ = ANY($2) AND b.gender = ANY($3)
 GROUP BY
     b.id, b.name_, b.price, b.price_number, b.vendor_link, b.type_, b.gender, b.descr, b.added_timestamp
 LIMIT 50;
 "#,
     )
     .bind(after_timestamp.clone())
+    .bind(filters.type_.clone())
+    .bind(filters.gender.clone())
     .fetch_all(pool)
     .await
     .expect("error2");
@@ -112,15 +127,21 @@ async fn init_pool() -> Pool<Postgres> {
 
 #[cfg(test)]
 mod test {
-    use crate::{init_pool, load_items};
+    use crate::{init_pool, load_items, Filters};
 
     #[tokio::test]
     async fn test_load_items_after_timestamp() {
         let pool = init_pool().await;
-        let items = load_items(&pool, 0).await;
+
+        let filters = Filters {
+            type_: vec!["necklace".to_string(), "bracelet".to_string()],
+            gender: vec!["women".to_string(), "men".to_string(), "uni".to_string()],
+        };
+
+        let items = load_items(&pool, 0, &filters).await;
         println!("loaded all items len: {}", items.len());
 
-        let items = load_items(&pool, 1739368334742824).await;
+        let items = load_items(&pool, 1739368334742824, &filters).await;
         println!("loaded  items after timestamp len: {}", items.len());
     }
 }
