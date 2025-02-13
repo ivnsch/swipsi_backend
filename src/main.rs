@@ -21,7 +21,6 @@ struct Bike {
     pictures: Vec<String>,
     vendor_link: String,
     type_: String,
-    gender: String,
     descr: String,
     added_timestamp: i64,
 }
@@ -29,13 +28,11 @@ struct Bike {
 #[derive(Debug, Deserialize)]
 struct Filters {
     type_: Vec<String>,
-    gender: Vec<String>,
     price: Vec<u32>,
 }
 
 struct DbFilters {
     type_: Vec<String>,
-    gender: Vec<String>,
     price_min: f32,
     price_max: f32,
 }
@@ -103,17 +100,10 @@ fn to_db_filters(filters: &Filters) -> DbFilters {
         filters.type_.clone()
     };
 
-    let gender_filter = if filters.gender.is_empty() {
-        vec!["women".to_string(), "men".to_string(), "any".to_string()]
-    } else {
-        filters.gender.clone()
-    };
-
     let price_bounds = to_min_max(&filters.price);
 
     DbFilters {
         type_: type_filter,
-        gender: gender_filter,
         price_min: price_bounds.min,
         price_max: price_bounds.max,
     }
@@ -130,7 +120,6 @@ SELECT
     b.price_number,
     b.vendor_link,
     b.type_,
-    b.gender,
     b.descr,
     b.added_timestamp,
     COALESCE(array_agg(bp.url) FILTER (WHERE bp.url IS NOT NULL), ARRAY[]::TEXT[]) AS pictures
@@ -139,15 +128,14 @@ FROM
 LEFT JOIN
     bike_pic bp ON b.id = bp.bike_id
 WHERE
-    b.added_timestamp > $1 AND b.type_ = ANY($2) AND b.gender = ANY($3) AND b.price_number > $4 AND b.price_number < $5
+    b.added_timestamp > $1 AND b.type_ = ANY($2) AND b.price_number > $3 AND b.price_number < $4
 GROUP BY
-    b.id, b.name_, b.price, b.price_number, b.vendor_link, b.type_, b.gender, b.descr, b.added_timestamp
+    b.id, b.name_, b.price, b.price_number, b.vendor_link, b.type_, b.descr, b.added_timestamp
 LIMIT 50;
 "#,
     )
     .bind(after_timestamp.clone())
     .bind(filters.type_.clone())
-    .bind(filters.gender.clone())
     .bind(filters.price_min)
     .bind(filters.price_max)
     .fetch_all(pool)
@@ -213,7 +201,6 @@ mod test {
 
         let filters = Filters {
             type_: vec!["necklace".to_string(), "bracelet".to_string()],
-            gender: vec!["women".to_string(), "men".to_string(), "uni".to_string()],
             price: vec![1, 2, 3, 4],
         };
 

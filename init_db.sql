@@ -13,7 +13,6 @@ CREATE TABLE IF NOT EXISTS bike (
     price_number FLOAT4,
     vendor_link VARCHAR(255),
     type_ VARCHAR(255),
-    gender VARCHAR(255),
     -- todo consider varchar with max limit
     descr TEXT,
     added_timestamp BIGINT
