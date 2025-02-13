@@ -371,19 +371,25 @@ pub async fn save_products_to_db(
     pool: &Pool<Postgres>,
     infos: &[ProductInfo],
     type_: &str,
+    gender: &str,
 ) -> Result<()> {
     for info in infos {
-        save_product_to_db(pool, info, type_).await?;
+        save_product_to_db(pool, info, type_, gender).await?;
     }
 
     Ok(())
 }
 
-async fn save_product_to_db(pool: &Pool<Postgres>, infos: &ProductInfo, type_: &str) -> Result<()> {
+async fn save_product_to_db(
+    pool: &Pool<Postgres>,
+    infos: &ProductInfo,
+    type_: &str,
+    gender: &str,
+) -> Result<()> {
     let row: (i32,) = sqlx::query_as(
         r#"
-INSERT INTO bike (name_, price, price_number, vendor_link, type_, added_timestamp, descr)
-VALUES ($1, $2, $3, $4, $5, $6, $7) 
+INSERT INTO bike (name_, price, price_number, vendor_link, type_, gender, added_timestamp, descr)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
 RETURNING id;
 "#,
     )
@@ -392,6 +398,7 @@ RETURNING id;
     .bind(infos.price_number)
     .bind(infos.details_link.clone())
     .bind(type_)
+    .bind(gender)
     .bind(Utc::now().timestamp_micros())
     .bind("")
     .fetch_one(pool)
@@ -436,7 +443,7 @@ mod test {
         };
 
         let pool = init_pool().await;
-        save_product_to_db(&pool, &info, "mock").await?;
+        save_product_to_db(&pool, &info, "mock", "uni").await?;
 
         Ok(())
     }
@@ -458,7 +465,7 @@ mod test {
             img: "https://doesntexist.com/foo2.png".to_string(),
         };
         let pool = init_pool().await;
-        save_products_to_db(&pool, &vec![info1, info2], "mock").await?;
+        save_products_to_db(&pool, &vec![info1, info2], "mock", "uni").await?;
 
         Ok(())
     }
@@ -479,7 +486,7 @@ mod test {
 
         // to_csv(&infos)?;
         let pool = init_pool().await;
-        save_products_to_db(&pool, &infos, "figurine").await?;
+        save_products_to_db(&pool, &infos, "figurine", "uni").await?;
 
         // // collect details
         // collect_details(&driver, &infos)
