@@ -33,6 +33,13 @@ struct Filters {
     price: Vec<u32>,
 }
 
+struct DbFilters {
+    type_: Vec<String>,
+    gender: Vec<String>,
+    price_min: f32,
+    price_max: f32,
+}
+
 #[post("/items/{last_timestamp}")]
 async fn items(
     state: Data<AppState>,
@@ -41,16 +48,26 @@ async fn items(
 ) -> Result<impl Responder> {
     let last_timestamp = path.into_inner();
     Ok(web::Json(
-        load_items(&state.db, last_timestamp, &filters).await,
+        load_items(&state.db, last_timestamp, &to_db_filters(&filters)).await,
     ))
 }
 
 fn to_min_max(price_filter: &[u32]) -> PriceBounds {
+    let min_possible_price = 0.;
+    let max_possible_price = 1_000_000.;
+
+    if price_filter.is_empty() {
+        return PriceBounds {
+            min: min_possible_price,
+            max: max_possible_price,
+        };
+    }
+
     let mut min = f32::MAX;
     let mut max: f32 = 0.;
 
     if price_filter.contains(&1) {
-        min = min.min(0.);
+        min = min.min(min_possible_price);
         max = max.max(19.99);
     }
     if price_filter.contains(&2) {
@@ -65,6 +82,7 @@ fn to_min_max(price_filter: &[u32]) -> PriceBounds {
         min = min.min(100.);
         max = max.max(1_000_000.);
     }
+
     PriceBounds { min, max }
 }
 
@@ -73,10 +91,36 @@ struct PriceBounds {
     max: f32,
 }
 
-// TODO redunancy filters price-filters
-async fn load_items(pool: &Pool<Postgres>, after_timestamp: i64, filters: &Filters) -> Vec<Bike> {
+fn to_db_filters(filters: &Filters) -> DbFilters {
+    let type_filter = if filters.type_.is_empty() {
+        vec![
+            "necklace".to_string(),
+            "bracelet".to_string(),
+            "ring".to_string(),
+            "earring".to_string(),
+        ]
+    } else {
+        filters.type_.clone()
+    };
+
+    let gender_filter = if filters.gender.is_empty() {
+        vec!["women".to_string(), "men".to_string(), "any".to_string()]
+    } else {
+        filters.gender.clone()
+    };
+
     let price_bounds = to_min_max(&filters.price);
 
+    DbFilters {
+        type_: type_filter,
+        gender: gender_filter,
+        price_min: price_bounds.min,
+        price_max: price_bounds.max,
+    }
+}
+
+// TODO redunancy filters price-filters
+async fn load_items(pool: &Pool<Postgres>, after_timestamp: i64, filters: &DbFilters) -> Vec<Bike> {
     let res: Vec<Bike> = sqlx::query_as(
         r#"
 SELECT
@@ -104,8 +148,8 @@ LIMIT 50;
     .bind(after_timestamp.clone())
     .bind(filters.type_.clone())
     .bind(filters.gender.clone())
-    .bind(price_bounds.min)
-    .bind(price_bounds.max)
+    .bind(filters.price_min)
+    .bind(filters.price_max)
     .fetch_all(pool)
     .await
     .expect("error2");
@@ -161,7 +205,7 @@ async fn init_pool() -> Pool<Postgres> {
 
 #[cfg(test)]
 mod test {
-    use crate::{init_pool, load_items, Filters};
+    use crate::{init_pool, load_items, to_db_filters, Filters};
 
     #[tokio::test]
     async fn test_load_items_after_timestamp() {
@@ -173,10 +217,10 @@ mod test {
             price: vec![1, 2, 3, 4],
         };
 
-        let items = load_items(&pool, 0, &filters).await;
+        let items = load_items(&pool, 0, &to_db_filters(&filters)).await;
         println!("loaded all items len: {}", items.len());
 
-        let items = load_items(&pool, 1739368334742824, &filters).await;
+        let items = load_items(&pool, 1739368334742824, &to_db_filters(&filters)).await;
         println!("loaded  items after timestamp len: {}", items.len());
     }
 }
