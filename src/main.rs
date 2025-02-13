@@ -13,7 +13,7 @@ use sqlx::{postgres::PgPoolOptions, prelude::FromRow, Pool, Postgres};
 
 #[derive(Debug, FromRow, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct Bike {
+struct Item {
     id: String,
     #[serde(rename = "name")]
     name_: String,
@@ -113,30 +113,30 @@ fn to_db_filters(filters: &Filters) -> DbFilters {
 }
 
 // TODO redunancy filters price-filters
-async fn load_items(pool: &Pool<Postgres>, after_timestamp: i64, filters: &DbFilters) -> Vec<Bike> {
+async fn load_items(pool: &Pool<Postgres>, after_timestamp: i64, filters: &DbFilters) -> Vec<Item> {
     info!("filters: {:?}", filters);
 
-    let res: Vec<Bike> = sqlx::query_as(
+    let res: Vec<Item> = sqlx::query_as(
         r#"
 SELECT
-    b.id::TEXT AS id,
-    b.name_,
-    b.price,
-    b.price_number,
-    b.price_currency,
-    b.vendor_link,
-    b.type_,
-    b.descr,
-    b.added_timestamp,
-    COALESCE(array_agg(bp.url) FILTER (WHERE bp.url IS NOT NULL), ARRAY[]::TEXT[]) AS pictures
+    i.id::TEXT AS id,
+    i.name_,
+    i.price,
+    i.price_number,
+    i.price_currency,
+    i.vendor_link,
+    i.type_,
+    i.descr,
+    i.added_timestamp,
+    COALESCE(array_agg(ip.url) FILTER (WHERE ip.url IS NOT NULL), ARRAY[]::TEXT[]) AS pictures
 FROM
-    bike b
+    item i
 LEFT JOIN
-    bike_pic bp ON b.id = bp.bike_id
+    item_pic ip ON i.id = ip.item_id
 WHERE
-    b.added_timestamp > $1 AND b.type_ = ANY($2) AND b.price_number > $3 AND b.price_number < $4
+    i.added_timestamp > $1 AND i.type_ = ANY($2) AND i.price_number > $3 AND i.price_number < $4
 GROUP BY
-    b.id, b.name_, b.price, b.price_number, b.price_currency, b.vendor_link, b.type_, b.descr, b.added_timestamp
+    i.id, i.name_, i.price, i.price_number, i.price_currency, i.vendor_link, i.type_, i.descr, i.added_timestamp
 LIMIT 50;
 "#,
     )

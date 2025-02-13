@@ -394,7 +394,7 @@ pub async fn save_products_to_db(
 async fn save_product_to_db(pool: &Pool<Postgres>, infos: &ProductInfo, type_: &str) -> Result<()> {
     let row: (i32,) = sqlx::query_as(
         r#"
-INSERT INTO bike (name_, price, price_number, price_currency, vendor_link, type_, added_timestamp, descr)
+INSERT INTO item (name_, price, price_number, price_currency, vendor_link, type_, added_timestamp, descr)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
 RETURNING id;
 "#,
@@ -413,7 +413,7 @@ RETURNING id;
 
     sqlx::query(
         r#"
-INSERT INTO bike_pic (bike_id, url)
+INSERT INTO item_pic (item_id, url)
 VALUES ($1, $2);
 "#,
     )
