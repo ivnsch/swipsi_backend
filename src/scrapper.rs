@@ -57,7 +57,7 @@ fn process_infos_link(link: String) -> Result<String> {
     new_url.set_path(&format!("/{}", dp_path));
     new_url.set_query(None); // remove all query parameters
 
-    new_url.query_pairs_mut().append_pair("tag", "my-tag");
+    new_url.query_pairs_mut().append_pair("tag", "glam0d9-21");
 
     Ok(new_url.to_string())
 }
