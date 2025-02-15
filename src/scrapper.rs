@@ -312,6 +312,7 @@ async fn is_in_last_page(driver: &WebDriver) -> Result<bool> {
 pub async fn extract_infos_for_all_pages(
     driver: &WebDriver,
     root_url: &str,
+    max_pages: u32,
 ) -> Result<Vec<ProductInfo>> {
     driver.goto(root_url).await?;
 
@@ -324,6 +325,7 @@ pub async fn extract_infos_for_all_pages(
     while !is_in_last_page(&driver)
         .await
         .expect("error checking is last page")
+        && next_page < max_pages
     {
         let container = driver.find(By::ClassName("s-main-slot")).await?;
         let page_links = extract_infos(&container).await.expect("...");
@@ -489,28 +491,31 @@ mod test {
     #[tokio::test]
     async fn scrap_all() -> Result<()> {
         let caps = DesiredCapabilities::chrome();
-        let driver = WebDriver::new("http://localhost:52711", caps).await?;
-
-        let necklace_url = "https://www.amazon.de/s?k=necklace&i=fashion";
-        let armband_url = "https://www.amazon.de/s?k=armband&i=fashion";
-        let ring_url = "https://www.amazon.de/s?k=ring&i=fashion";
-        let earring_url = "https://www.amazon.de/s?k=earring&i=fashion";
-
-        let necklaces = extract_infos_for_all_pages(&driver, necklace_url).await?;
-        let armbands = extract_infos_for_all_pages(&driver, armband_url).await?;
-        let rings = extract_infos_for_all_pages(&driver, ring_url).await?;
-        let earrings = extract_infos_for_all_pages(&driver, earring_url).await?;
-
-        println!("extracted links for all pages");
-        println!("necklaces: {}", necklaces.len());
-        println!("armbands: {}", armbands.len());
-        println!("rings: {}", rings.len());
-        println!("earrings: {}", earrings.len());
+        let driver = WebDriver::new("http://localhost:64188", caps).await?;
 
         let pool = init_pool().await;
+
+        // let max_pages = u32::MAX; // get all pages
+        let max_pages = 4;
+
+        let necklace_url = "https://www.amazon.de/s?k=necklace&i=fashion";
+        let necklaces = extract_infos_for_all_pages(&driver, necklace_url, max_pages).await?;
+        println!("necklaces: {}", necklaces.len());
         save_products_to_db(&pool, &necklaces, "necklace").await?;
+
+        let armband_url = "https://www.amazon.de/s?k=armband&i=fashion";
+        let armbands = extract_infos_for_all_pages(&driver, armband_url, max_pages).await?;
+        println!("armbands: {}", armbands.len());
         save_products_to_db(&pool, &armbands, "armband").await?;
+
+        let ring_url = "https://www.amazon.de/s?k=ring&i=fashion";
+        let rings = extract_infos_for_all_pages(&driver, ring_url, max_pages).await?;
+        println!("rings: {}", rings.len());
         save_products_to_db(&pool, &rings, "ring").await?;
+
+        let earring_url = "https://www.amazon.de/s?k=earring&i=fashion";
+        let earrings = extract_infos_for_all_pages(&driver, earring_url, max_pages).await?;
+        println!("earrings: {}", earrings.len());
         save_products_to_db(&pool, &earrings, "earring").await?;
 
         println!("finished saving products to db");
@@ -521,13 +526,13 @@ mod test {
     #[tokio::test]
     async fn scrap() -> Result<()> {
         let caps = DesiredCapabilities::chrome();
-        let driver = WebDriver::new("http://localhost:52711", caps).await?;
+        let driver = WebDriver::new("http://localhost:64188", caps).await?;
 
         // let root_url: &str = "https://www.amazon.de/s?k=ringe&i=fashion";
         // only a few pages
         let root_url: &str = "https://www.amazon.de/s?k=naruto+figurine";
 
-        let infos = extract_infos_for_all_pages(&driver, root_url).await?;
+        let infos = extract_infos_for_all_pages(&driver, root_url, 4).await?;
         // println!("extracted links ({}) for all pages: {:?}", links.len(), links);
 
         println!("extracted links ({}) for all pages", infos.len());
