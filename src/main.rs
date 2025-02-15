@@ -167,7 +167,7 @@ pub struct AppState {
 async fn main() -> std::io::Result<()> {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("debug"));
 
-    let pool = init_pool().await;
+    let pool = init_pool("5432").await;
 
     // consider removing this..
     test_query(&pool).await;
@@ -198,10 +198,10 @@ async fn test_query(pool: &Pool<Postgres>) {
     assert_eq!(row.0, 150);
 }
 
-async fn init_pool() -> Pool<Postgres> {
+async fn init_pool(port: &str) -> Pool<Postgres> {
     PgPoolOptions::new()
         .max_connections(5)
-        .connect("postgres://postgres@localhost:5432/bikematch")
+        .connect(&format!("postgres://postgres@localhost:{}/bikematch", port))
         .await
         .expect("error1")
 }
@@ -212,7 +212,7 @@ mod test {
 
     #[tokio::test]
     async fn test_load_items_after_timestamp() {
-        let pool = init_pool().await;
+        let pool = init_pool("5432").await;
 
         let filters = Filters {
             type_: vec!["necklace".to_string(), "bracelet".to_string()],

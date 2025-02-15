@@ -454,7 +454,7 @@ mod test {
             img: "https://doesntexist.com/foo.png".to_string(),
         };
 
-        let pool = init_pool().await;
+        let pool = init_pool("5433").await;
         save_product_to_db(&pool, &info, "mock").await?;
 
         Ok(())
@@ -482,7 +482,7 @@ mod test {
             },
             img: "https://doesntexist.com/foo2.png".to_string(),
         };
-        let pool = init_pool().await;
+        let pool = init_pool("5433").await;
         save_products_to_db(&pool, &vec![info1, info2], "mock").await?;
 
         Ok(())
@@ -491,9 +491,9 @@ mod test {
     #[tokio::test]
     async fn scrap_all() -> Result<()> {
         let caps = DesiredCapabilities::chrome();
-        let driver = WebDriver::new("http://localhost:64188", caps).await?;
+        let driver = WebDriver::new("http://localhost:63374", caps).await?;
 
-        let pool = init_pool().await;
+        let pool = init_pool("5433").await;
 
         // let max_pages = u32::MAX; // get all pages
         let max_pages = 4;
@@ -538,7 +538,7 @@ mod test {
         println!("extracted links ({}) for all pages", infos.len());
 
         // to_csv(&infos)?;
-        let pool = init_pool().await;
+        let pool = init_pool("5433").await;
         save_products_to_db(&pool, &infos, "necklace").await?;
 
         // // collect details
