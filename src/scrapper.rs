@@ -508,7 +508,7 @@ mod test {
         println!("armbands: {}", armbands.len());
         save_products_to_db(&pool, &armbands, "armband").await?;
 
-        let ring_url = "https://www.amazon.de/s?k=ring&i=fashion";
+        let ring_url = "https://www.amazon.de/s?k=ringe&i=fashion";
         let rings = extract_infos_for_all_pages(&driver, ring_url, max_pages).await?;
         println!("rings: {}", rings.len());
         save_products_to_db(&pool, &rings, "ring").await?;
