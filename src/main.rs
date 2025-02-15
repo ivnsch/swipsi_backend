@@ -166,6 +166,8 @@ pub struct AppState {
 async fn main() -> std::io::Result<()> {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("debug"));
 
+    let port = env::var("PORT").unwrap_or_else(|_| "3000".to_string());
+
     let pool = init_pool().await;
 
     // consider removing this..
@@ -181,7 +183,7 @@ async fn main() -> std::io::Result<()> {
             .service(hello)
     })
     // .bind(("127.0.0.1", 8080))?
-    .bind(("0.0.0.0", 3000))?
+    .bind(("0.0.0.0", port.parse().unwrap()))?
     .run()
     .await
 }
