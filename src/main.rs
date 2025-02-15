@@ -1,11 +1,13 @@
 pub mod scrapper;
 
+use std::env;
+
 use actix_web::{
     get,
     middleware::Logger,
     post,
     web::{self, Data},
-    App, HttpServer, Responder, Result,
+    App, HttpResponse, HttpServer, Responder, Result,
 };
 use log::info;
 use serde::{Deserialize, Serialize};
@@ -38,6 +40,11 @@ struct DbFilters {
     type_: Vec<String>,
     price_min: f32,
     price_max: f32,
+}
+
+#[get("/")]
+async fn hello() -> impl Responder {
+    HttpResponse::Ok().body("Hello world!")
 }
 
 #[post("/items/{last_timestamp}")]
@@ -171,6 +178,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(Logger::default())
             .app_data(Data::new(AppState { db: pool.clone() }))
             .service(items)
+            .service(hello)
     })
     // .bind(("127.0.0.1", 8080))?
     .bind(("0.0.0.0", 3000))?
@@ -190,9 +198,11 @@ async fn test_query(pool: &Pool<Postgres>) {
 }
 
 async fn init_pool() -> Pool<Postgres> {
+    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    println!("Connecting to database at: {}", database_url);
     PgPoolOptions::new()
         .max_connections(5)
-        .connect("postgres://tester:testpw@localhost:5433/bikematch")
+        .connect(&database_url)
         .await
         .expect("error1")
 }
