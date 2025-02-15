@@ -201,7 +201,10 @@ async fn test_query(pool: &Pool<Postgres>) {
 async fn init_pool(port: &str) -> Pool<Postgres> {
     PgPoolOptions::new()
         .max_connections(5)
-        .connect(&format!("postgres://postgres@localhost:{}/bikematch", port))
+        .connect(&format!(
+            "postgres://tester:testpw@localhost:{}/bikematch",
+            port
+        ))
         .await
         .expect("error1")
 }
