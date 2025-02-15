@@ -144,6 +144,7 @@ WHERE
     i.added_timestamp > $1 AND i.type_ = ANY($2) AND i.price_number > $3 AND i.price_number < $4
 GROUP BY
     i.id, i.name_, i.price, i.price_number, i.price_currency, i.vendor_link, i.type_, i.descr, i.added_timestamp
+ORDER BY id
 LIMIT 50;
 "#,
     )
